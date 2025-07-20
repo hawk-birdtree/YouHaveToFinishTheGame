@@ -1,6 +1,8 @@
 # YouHaveToFinishTheGame
 
-My first 2D platformer inspired by "You have to win the game"
+My first -incomplete- Raylib 2D platformer inspired by "You have to win the game". 
+It turns out I'm really bad a level design, and I'm learning a lot about what 
+not to do when programming; it's all here as a time capsule of game dev mistakes.
 
 ## How to Build
  
