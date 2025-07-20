@@ -50,7 +50,8 @@ My first 2D platformer inspired by "You have to win the game"
 - Make enemies and projectiles collide with walls instead of passing through them
 - Add Leader Board
 - More or Better animations and graphics
-- 
+- Fix how the enemies and obstacles are initialized because that code is too buggy and amateurish
+- Separate the game objects into their own modules instead of having a single main file doing everything
     
 ## Known Issues
 
