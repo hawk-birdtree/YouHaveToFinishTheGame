@@ -11,9 +11,8 @@ My first 2D platformer inspired by "You have to win the game"
 ## Controls
  
 - Arrow Keys, WASD, or Joystick D-Pad to move.
-- Press SpaceBar, or Joystick A or X button to Jump.
-- Hold Shift or Joystick Square or X button to Run.
-- Joystick Circle Button or B button shows tile coordinates.
+- Press SpaceBar, or Joystick A button or X button to Jump.
+- Hold Shift, or Joystick X button or Square button to Run.
  
 ## Features
  
