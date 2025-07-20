@@ -1,0 +1,5 @@
+#compile files
+
+#folders or files to ignore
+Old_Modules/
+working_src/
