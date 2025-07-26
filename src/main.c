@@ -934,7 +934,7 @@ void InitProjectiles(void) {
                 projectiles[numberOfProjectiles].maxDistance = TILE_SIZE * 4;  // Distance to travel before reset
                 projectiles[numberOfProjectiles].radius = 5.0f;
                 projectiles[numberOfProjectiles].active = true;
-                projectiles[numberOfProjectiles].delay = 2.0f;
+                projectiles[numberOfProjectiles].delay = GetRandomValue(1.0f, 3.0f);
                 projectiles[numberOfProjectiles].cooldown = 0.0f; // Initialize cooldown
 
                 numberOfProjectiles++;
@@ -1931,7 +1931,7 @@ void UpdateGame(void) {
     if (win) {
         if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
             if(current_level >= TOTAL_LEVELS){
-                current_level = 0;
+                current_level = -1;
                 // ResetGame();
             }
             else {
