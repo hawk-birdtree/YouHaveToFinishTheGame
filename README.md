@@ -52,15 +52,12 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
 - Make enemies and projectiles collide with walls instead of passing through them.
 - Add Leader Board.
 - More or Better animations and graphics.
-- Fix how the enemies and obstacles are initialized because that code is too buggy and amateurish.
 - Separate the game objects into their own modules instead of having a single main file doing everything.
 - Add a start screen and end game screen.
     
 ## Known Issues
 
-- Enemies, projectiles and pillars get initialized to the top left corner of the screen.
-- The player tile should only be one pixel. If multiple pixels of the player are drawn, the game can't decide which to use.
-- When the game resets, there are objects that appear where they shouldn't. That has to do with how  objects are initialized.
+- None so far
 
 ## Licence
 
