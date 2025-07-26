@@ -77,7 +77,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/levelBlockout.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -816,7 +816,7 @@ void InitRotatingPillarGroups(void) {
             pixelColor = mapColors[x][y];
 
             if((0 == pixelColor.r && 128 == pixelColor.g && 128 == pixelColor.b) && rotatingPillarCount < NUM_PILLAR_GROUPS) {
-                pillarGroups[rotatingPillarCount].center = (Vector2){x * TILE_SIZE, y * TILE_SIZE};
+                pillarGroups[rotatingPillarCount].center = (Vector2){x * TILE_SIZE + TILE_SIZE/2.0f, y * TILE_SIZE + TILE_SIZE/2.0f};
                 rotatingPillarCount++;
             }
         }
@@ -889,6 +889,7 @@ void DrawRotatingPillarGroups(void) {
         // Draw each pillar in the group
         for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
             DrawCircleV(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, YELLOW);
+            DrawCircle(pillarGroups[g].center.x, pillarGroups[g].center.y, 6.0f, MAROON);
             // DrawText(TextFormat("%d", i), pillarGroups[g].pillars[i].position.x, pillarGroups[g].pillars[i].position.y, 8, WHITE);
         }
         // DrawText(TextFormat("%d", g), pillarGroups[g].center.x, pillarGroups[g].center.y, 8, WHITE);
