@@ -1,7 +1,7 @@
 /*
-    I want the player to have variable jump height
-    I want the enemies to change direction when they collide with a wall, but I would have to refactor the enemies to be entities
-*/
+ I want the pla*yer to have variable jump height
+ I want the enemies to change direction when they collide with a wall, but I would have to refactor the enemies to be entities
+ */
 
 #include "raylib.h"
 #include "raymath.h"
@@ -61,6 +61,7 @@ Input input;
 #define NORMAL_SPEED   1.50*60 //1.5625f * 60
 #define RUNNING_SPEED  2.50*60 //3.1255f * 60
 
+
 #define SCREEN_WIDTH   1280 // 640 * 2
 #define SCREEN_HEIGHT   768 // 480 * 2
 
@@ -76,7 +77,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/levelBlockout.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -389,14 +390,14 @@ void UnloadGame(void);
 //****************************************MAIN************************************************
 
 int main(void)
-{   
-	InitGame();
+{
+    InitGame();
 
-	int FPS = 60;
-	delta = (float)1.0/(float)FPS;
-#if defined(PLATFORM_WEB)
+    int FPS = 60;
+    delta = (float)1.0/(float)FPS;
+    #if defined(PLATFORM_WEB)
     emscripten_set_main_loop(UpdateDrawFrame, FPS, 1);
-#else
+    #else
     SetTargetFPS(FPS);
 
     while (!WindowShouldClose())    // Detect window close button or ESC key
@@ -404,13 +405,13 @@ int main(void)
         UpdateGame();
         DrawGame();
     }
-	
-#endif
-	UnloadGame();
-	CloseAudioDevice();
+
+    #endif
+    UnloadGame();
+    CloseAudioDevice();
     CloseWindow();
-    
-	return 0;
+
+    return 0;
 }
 
 //******************************************************************************************
@@ -532,7 +533,7 @@ void InitWorldMap(void){
     worldmap.playerStartPos = (Vector2){0.0f, 0.0f};
     worldmap.texture   = LoadTexture(current_level_texture[current_level]);
     worldmap.frame     = (Rectangle){worldmap.position.x, worldmap.position.y,
-                         (float)worldmap.texture.width, (float)worldmap.texture.height};
+        (float)worldmap.texture.width, (float)worldmap.texture.height};
 }
 
 void UpdateWorldMap(void) {
@@ -568,8 +569,8 @@ void GetStageMapColors(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -579,9 +580,9 @@ void GetStageMapColors(void) {
                 (pixelColor.r == 60 && pixelColor.g == 60 && pixelColor.b == 60) ||
                 (pixelColor.r == 80 && pixelColor.g == 80 && pixelColor.b == 80)) {
                 tiles[x + y * TILE_MAP_WIDTH] = BLOCK;
-            } else {
-                tiles[x + y * TILE_MAP_WIDTH] = EMPTY;
-            }
+                } else {
+                    tiles[x + y * TILE_MAP_WIDTH] = EMPTY;
+                }
         }
     }
 }
@@ -627,7 +628,7 @@ int MapGetTileWorld(int x, int y) {
     x /= TILE_SIZE;
     y /= TILE_SIZE;
 
-    if (x > TILE_MAP_WIDTH || y > TILE_MAP_HEIGHT) return EMPTY;
+    if (x >= TILE_MAP_WIDTH || y >= TILE_MAP_HEIGHT) return EMPTY;
 
     return tiles[x+y*TILE_MAP_WIDTH];
 }
@@ -666,8 +667,8 @@ void InitTreasure(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -722,7 +723,7 @@ int FindAvailableTreasureIndex(void){
 void UnloadTreasure(void) {
     free(treasure);
     treasure = NULL;
-    
+
     score = 0;
     treasureCount = 0;
 }
@@ -737,8 +738,8 @@ void InitSpikes(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -807,8 +808,10 @@ void UnloadSpikes(void) {
 
 void InitRotatingPillarGroups(void) {
 
-    for(int y = 0; y < mapImage.height; y++) {
-        for(int x = 0; x < mapImage.width; x++) {
+    rotatingPillarCount = 0;
+
+    for(int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for(int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -819,7 +822,7 @@ void InitRotatingPillarGroups(void) {
         }
     }
 
-    for(size_t n = 0; n < NUM_PILLAR_GROUPS; n++) {
+    for(size_t n = 0; n < rotatingPillarCount && n < NUM_PILLAR_GROUPS; n++) {
         pillarGroups[n].orbit_rotation = 0.0f;
         pillarGroups[n].rotation_speed = 1.0f;
 
@@ -832,13 +835,14 @@ void InitRotatingPillarGroups(void) {
         for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
             pillarGroups[n].pillars[i].orbit_radius = 10.0f + (i * 8.0f);
             pillarGroups[n].pillars[i].radius = 4.0f;
-            pillarGroups[n].pillars[i].position = pillarGroups[0].center;
+            // pillarGroups[n].pillars[i].position = pillarGroups[0].center;
+            pillarGroups[n].pillars[i].position = pillarGroups[n].center;
         }
     }
 }
 
 void UpdateRotatingPillarGroups(void) {
-    for (size_t g = 0; g < NUM_PILLAR_GROUPS; g++) {
+    for (size_t g = 0; g < rotatingPillarCount; g++) {
         // Update orbit rotation for each group
         pillarGroups[g].orbit_rotation += pillarGroups[g].rotation_speed * GetFrameTime() * 180.0f / PI;
 
@@ -857,7 +861,7 @@ void UpdateRotatingPillarGroups(void) {
 }
 
 void CollisionWithRotatingPillarGroups(void) {
-    for (size_t g = 0; g < NUM_PILLAR_GROUPS; g++) {
+    for (size_t g = 0; g < rotatingPillarCount; g++) {
         if (player.state != STATE_INVINCIBLE) { // Make sure the player isn't invincible
             for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
                 if (CheckCollisionCircleRec(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, player.collider)) {
@@ -881,7 +885,7 @@ void CollisionWithRotatingPillarGroups(void) {
 }
 
 void DrawRotatingPillarGroups(void) {
-    for (size_t g = 0; g < NUM_PILLAR_GROUPS; g++) {
+    for (size_t g = 0; g < rotatingPillarCount; g++) {
         // Draw each pillar in the group
         for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
             DrawCircleV(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, YELLOW);
@@ -893,10 +897,13 @@ void DrawRotatingPillarGroups(void) {
 
 void UnloadPillars(void){
 
-    for(size_t i = 0; i < NUM_PILLAR_GROUPS; i++){
-        free(pillarGroups[i].pillars);
-        pillarGroups[i].pillars = NULL;
+    for(size_t i = 0; i < rotatingPillarCount; i++){
+        if(pillarGroups[i].pillars != NULL){
+            free(pillarGroups[i].pillars);
+            pillarGroups[i].pillars = NULL;
+        }
     }
+    rotatingPillarCount = 0;
 }
 
 //**********************************************PROJECTILES****************************************************
@@ -912,8 +919,8 @@ void InitProjectiles(void) {
         CloseWindow();
     }
 
-    for(int y = 0; y < mapImage.height; y++) {
-        for(int x = 0; x < mapImage.width; x++) {
+    for(int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for(int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
             pixelColor = mapColors[x][y];
 
             if((255 == pixelColor.r && 0 == pixelColor.g && 255 == pixelColor.b) && numberOfProjectiles < MAX_PROJECTILES) {
@@ -1018,11 +1025,11 @@ void UnloadProjectiles(void) {
 //**********************************************PLAYER****************************************************
 
 void InitPlayer(void) {
-    
+
     playerCount = 0;
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1034,7 +1041,7 @@ void InitPlayer(void) {
                     if (playerCount > 1)
                     {
                         playerCount = 1;
-                    }   
+                    }
                 } else {
                     TraceLog(LOG_ERROR, "Multiple player start positions detected!");
                 }
@@ -1440,8 +1447,8 @@ void InitCheckpoints(void) {
         checkpoints[i].frame.y = TILE_SIZE * 2;
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1529,6 +1536,8 @@ void InitSounds(void) {
 //**********************************************MONSTERS******************************************************
 
 void InitHorizontalMonsters(void) {
+    pathIndexHorizontal = 0;
+
     monsterHorizontal = (Monster*)calloc(MAX_HORIZONTAL_MONSTERS, sizeof(Monster));
 
     if(monsterHorizontal == NULL) {
@@ -1543,8 +1552,8 @@ void InitHorizontalMonsters(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1554,7 +1563,7 @@ void InitHorizontalMonsters(void) {
         }
     }
 
-    for (size_t i = 0; i < MAX_HORIZONTAL_MONSTERS; i++) {
+    for (size_t i = 0; i < MAX_HORIZONTAL_MONSTERS && i < pathIndexHorizontal; i++) {
         monsterHorizontal[i].position  = monsterHorizontalPatrolPath[i];
         monsterHorizontal[i].direction = 0;
         monsterHorizontal[i].texture   = levelSpriteSheet;
@@ -1566,6 +1575,8 @@ void InitHorizontalMonsters(void) {
 }
 
 void InitVerticalMonsters(void) {
+    pathIndexVertical = 0;
+
     monsterVertical = (Monster*)calloc(MAX_VERTICAL_MONSTERS, sizeof(Monster));
 
     if(monsterVertical == NULL) {
@@ -1580,8 +1591,8 @@ void InitVerticalMonsters(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height; y++) {
-        for (int x = 0; x < mapImage.width; x++) {
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1591,7 +1602,7 @@ void InitVerticalMonsters(void) {
         }
     }
 
-    for (size_t i = 0; i < MAX_VERTICAL_MONSTERS; i++) {
+    for (size_t i = 0; i < MAX_VERTICAL_MONSTERS && i < pathIndexVertical; i++) {
         monsterVertical[i].position  = monsterVerticalPatrolPath[i];
         monsterVertical[i].direction = 0;
         monsterVertical[i].texture   = levelSpriteSheet;
@@ -1608,7 +1619,7 @@ void UpdateHorizontalMonsters(void) {
     // Update animation frames globally for horizontal monsters
     frameDelayCounter++;
     if (frameDelayCounter >= frameDelay) {
-        for(size_t i = 0; i < MAX_HORIZONTAL_MONSTERS; i++) {
+        for(size_t i = 0; i < pathIndexHorizontal; i++) {
             monsterHorizontal[i].frame.x = TILE_SIZE * 3;
             monsterHorizontal[i].frame.y += TILE_SIZE; // monsterHorizontal[0].texture.height / 2.0f;
             if (monsterHorizontal[i].frame.y >= TILE_SIZE * 2) { //monsterHorizontal[0].texture.height) {
@@ -1618,7 +1629,7 @@ void UpdateHorizontalMonsters(void) {
         frameDelayCounter = 0; // Reset the delay counter
     }
 
-    for (size_t i = 0; i < MAX_HORIZONTAL_MONSTERS; i++) {
+    for (size_t i = 0; i < pathIndexHorizontal; i++) {
         if (monsterHorizontal[i].direction == 1) {
             monsterHorizontal[i].position.x -= monsterHorizontal[i].speed;
             if (monsterHorizontal[i].position.x <= (monsterHorizontalPatrolPath[i].x - monsterHorizontal[i].movementDistance)) {
@@ -1645,7 +1656,7 @@ void UpdateVerticalMonsters(void) {
     // Update animation frames globally for vertical monsters
     frameDelayCounter++;
     if (frameDelayCounter >= frameDelay) {
-        for (size_t i = 0; i < MAX_VERTICAL_MONSTERS; i++) {
+        for (size_t i = 0; i < pathIndexVertical; i++) {
             monsterVertical[i].frame.x = TILE_SIZE; // Fixed column (2)
             monsterVertical[i].frame.y += TILE_SIZE;   // Increment row
             if (monsterVertical[i].frame.y > TILE_SIZE * 3) { // Loop between rows 3 and 4
@@ -1655,7 +1666,7 @@ void UpdateVerticalMonsters(void) {
         frameDelayCounter = 0; // Reset the delay counter
     }
 
-    for (size_t i = 0; i < MAX_VERTICAL_MONSTERS; i++) {
+    for (size_t i = 0; i < pathIndexVertical; i++) {
         if (monsterVertical[i].direction == 1) {
             monsterVertical[i].position.y -= monsterVertical[i].speed;
             if (monsterVertical[i].position.y <= (monsterVerticalPatrolPath[i].y - monsterVertical[i].movementDistance)) {
@@ -1677,7 +1688,7 @@ void UpdateVerticalMonsters(void) {
 }
 
 void DrawHorizontalMonsters(void) {
-    for (size_t i = 0; i < MAX_HORIZONTAL_MONSTERS; i++) {
+    for (size_t i = 0; i < pathIndexHorizontal; i++) {
         // Use global monster_frame.x to set the current animation frame
         Rectangle frameRect = {
             monsterHorizontal[i].frame.x,               // Current frame X position (updated globally)
@@ -1693,7 +1704,7 @@ void DrawHorizontalMonsters(void) {
 }
 
 void DrawVerticalMonsters(void) {
-    for (size_t i = 0; i < MAX_VERTICAL_MONSTERS; i++) {
+    for (size_t i = 0; i < pathIndexVertical; i++) {
         // Use global monster_frame.x to set the current animation frame
         Rectangle frameRect = {
             monsterVertical[i].frame.x,               // Current frame X position (updated globally)
@@ -1944,23 +1955,23 @@ void UpdateGame(void) {
 
 void LoadNextLevel(void){
     current_level++;
-    
+
     if(current_level >= TOTAL_LEVELS){
         current_level = 0; //show end screen
     }
-    
+
     UnloadTreasure();
     UnloadSpikes();
     UnloadCheckpoints();
     UnloadMonsters();
     UnloadPillars();
     UnloadProjectiles();
-    
+
     UnloadTexture(levelSpriteSheet);
     UnloadTexture(levelBlockout);
     // UnloadTexture(levelBlockoutBackground);
     UnloadMap();
-    
+
     LoadResources();
     SetGameState();
     InitGameComponents();
