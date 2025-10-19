@@ -1,6 +1,5 @@
 /*
  I want the pla*yer to have variable jump height
- I want the enemies to change direction when they collide with a wall, but I would have to refactor the enemies to be entities
  */
 
 #include "raylib.h"
@@ -50,7 +49,7 @@ Input input;
 
 #define MAX_TILES              21
 #define MAX_ROOMS               4
-#define MAX_COLORS             12
+#define MAX_COLORS             13
 #define MAX_PLAYER_HP           3
 #define MAX_LEVEL_TEXTURES      6
 #define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
@@ -76,9 +75,9 @@ size_t MAX_VERTICAL_MONSTERS   = 0;
 size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
+size_t MAX_PLATFORMS           = 0;
 
-// char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/levelBlockout.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -155,6 +154,29 @@ void UpdateWorldMap(void);
 void DrawWorldMap(void);
 int TileHeight(int y, int tile);
 void UnloadMap(void);
+
+//**********************************************MOVING PLATFORMS****************************************************
+
+size_t platformCount = 0;
+
+typedef struct {
+    Vector2 position;
+    Vector2 startPos;
+    Vector2 velocity;
+    int movementDistance;
+    int direction;  // 0 = horizontal, 1 = vertical
+    Rectangle collider;
+    Texture2D texture;
+    Rectangle frame;
+} MovingPlatform;
+
+MovingPlatform *platforms = NULL;
+
+void InitMovingPlatforms(void);
+void UpdateMovingPlatforms(void);
+void DrawMovingPlatforms(void);
+void PlayerPlatformCollision(void);
+void UnloadMovingPlatforms(void);
 
 //**********************************************TREASURE****************************************************
 size_t treasureCount = 0;
@@ -509,6 +531,8 @@ void CountColors(void) {
                 MAX_CHECKPOINTS++;
             }else if ( 255 == pixelColor.r &&   0 == pixelColor.g && 255 == pixelColor.b) {
                 MAX_PROJECTILES++;
+            }else if (255 == pixelColor.r && 255 == pixelColor.g && 0 == pixelColor.b) {
+                MAX_PLATFORMS++;  // Add size_t MAX_PLATFORMS = 0; to globals
             }
         }
     }
@@ -677,6 +701,95 @@ void UnloadMap(void){
 
     free(tiles);
     tiles = NULL;
+}
+
+//*************************************Moving Platforms*****************************************
+
+void InitMovingPlatforms(void) {
+    platforms = (MovingPlatform*)calloc(MAX_PLATFORMS, sizeof(MovingPlatform));
+
+    if(platforms == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for Platforms!");
+        CloseWindow();
+    }
+
+    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+            pixelColor = mapColors[x][y];
+
+            if ((255 == pixelColor.r && 255 == pixelColor.g && 0 == pixelColor.b) && platformCount < MAX_PLATFORMS) {
+                platforms[platformCount].position = (Vector2){x * TILE_SIZE, y * TILE_SIZE};
+                platforms[platformCount].startPos = platforms[platformCount].position;
+                platforms[platformCount].direction = 0; // 0 = horizontal, 1 = vertical
+                platforms[platformCount].velocity = (Vector2){1.0f, 0.0f}; // Adjust speed
+                platforms[platformCount].movementDistance = TILE_SIZE * 4;
+                platforms[platformCount].texture = levelSpriteSheet;
+                platforms[platformCount].frame = (Rectangle){0, 0, TILE_SIZE * 2, TILE_SIZE};
+                platforms[platformCount].collider = (Rectangle){
+                    platforms[platformCount].position.x,
+                    platforms[platformCount].position.y,
+                    TILE_SIZE * 2,
+                    TILE_SIZE
+                };
+                platformCount++;
+            }
+        }
+    }
+}
+
+void UpdateMovingPlatforms(void) {
+    for (size_t i = 0; i < platformCount; i++) {
+        if (platforms[i].direction == 0) { // Horizontal
+            platforms[i].position.x += platforms[i].velocity.x;
+            float distance = fabsf(platforms[i].position.x - platforms[i].startPos.x);
+
+            if (distance >= platforms[i].movementDistance) {
+                platforms[i].velocity.x = -platforms[i].velocity.x;
+            }
+        } else { // Vertical
+            platforms[i].position.y += platforms[i].velocity.y;
+            float distance = fabsf(platforms[i].position.y - platforms[i].startPos.y);
+
+            if (distance >= platforms[i].movementDistance) {
+                platforms[i].velocity.y = -platforms[i].velocity.y;
+            }
+        }
+
+        platforms[i].collider.x = platforms[i].position.x;
+        platforms[i].collider.y = platforms[i].position.y;
+    }
+}
+
+void PlayerPlatformCollision(void) {
+    for (size_t i = 0; i < platformCount; i++) {
+        // Check if player is landing on platform from above
+        if (player.velocity.y > 0 &&
+            player.position.x + player.width/2 > platforms[i].position.x &&
+            player.position.x - player.width/2 < platforms[i].position.x + platforms[i].collider.width &&
+            player.position.y >= platforms[i].position.y - player.height &&
+            player.position.y < platforms[i].position.y + 4) {
+
+            player.position.y = platforms[i].position.y - 1;
+        player.velocity.y = 0;
+        player.isGrounded = true;
+
+        // Move player with platform
+        player.position.x += platforms[i].velocity.x;
+        player.position.y += platforms[i].velocity.y;
+            }
+    }
+}
+
+void DrawMovingPlatforms(void) {
+    for (size_t i = 0; i < platformCount; i++) {
+        DrawTextureRec(platforms[i].texture, platforms[i].frame, platforms[i].position, BROWN);
+    }
+}
+
+void UnloadMovingPlatforms(void) {
+    free(platforms);
+    platforms = NULL;
+    platformCount = 0;
 }
 
 //**********************************************TREASURE****************************************************
@@ -1116,16 +1229,26 @@ void InitPlayer(void) {
 }
 
 void UpdatePlayerInput(void) {
-    input.right = (float)(IsKeyDown('D')    || IsKeyDown(KEY_RIGHT) || IsGamepadButtonDown(   0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT));
-    input.left  = (float)(IsKeyDown('A')    || IsKeyDown(KEY_LEFT)  || IsGamepadButtonDown(   0, GAMEPAD_BUTTON_LEFT_FACE_LEFT));
-    input.down  = (float)(IsKeyDown('S')    || IsKeyDown(KEY_DOWN)  || IsGamepadButtonDown(   0, GAMEPAD_BUTTON_LEFT_FACE_UP));
-    input.up    = (float)(IsKeyPressed('W') || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN));
+    input.right = (float)(IsKeyDown('D')    || IsKeyDown(KEY_RIGHT) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT));
+    input.left  = (float)(IsKeyDown('A')    || IsKeyDown(KEY_LEFT)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT));
+    input.down  = (float)(IsKeyDown('S')    || IsKeyDown(KEY_DOWN)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP));
 
-    //For jumping button needs to be toggled - allows pre-jump buffered (if held, jumps as soon as lands)
-    if (input.up) input.jump = true;
-    else if (!input.up && GetFrameTime() >= 0.5f) input.jump = false;  // Fixed: changed condition
+    // Check if jump button is currently held down
+    bool jumpButtonHeld = IsKeyDown('W') || IsKeyDown(KEY_UP) || IsKeyDown(KEY_SPACE) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
 
-    // Update current animation state based on game logic and collisions
+    // Check if jump button was just pressed this frame
+    bool jumpButtonPressed = IsKeyPressed('W') || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+
+    // Set jump flag when button is first pressed
+    if (jumpButtonPressed) {
+        input.jump = true;
+    }
+    // Clear jump flag when button is released
+    else if (!jumpButtonHeld) {
+        input.jump = false;
+    }
+
+    // Update current animation state
     if (input.right) {
         currentAnimation = ANIM_WALKING;
         playerDirection = FACING_RIGHT;
@@ -1145,6 +1268,51 @@ void UpdatePlayerInput(void) {
     player.collider.x = player.position.x - TILE_SIZE / 4.0f;
     player.collider.y = player.position.y - TILE_SIZE / 2.0f - 1;
 }
+
+// void UpdatePlayerInput(void) {
+//     input.right = (float)(IsKeyDown('D')    || IsKeyDown(KEY_RIGHT) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT));
+//     input.left  = (float)(IsKeyDown('A')    || IsKeyDown(KEY_LEFT)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT));
+//     input.down  = (float)(IsKeyDown('S')    || IsKeyDown(KEY_DOWN)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP));
+//
+//     // CHANGED: Use IsKeyDown to check if button is HELD, not just pressed
+//     bool jumpButtonHeld = IsKeyDown('W') || IsKeyDown(KEY_UP) || IsKeyDown(KEY_SPACE) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+//
+//     // Set jump to true when button is first pressed
+//     if (jumpButtonHeld && !input.jump) {
+//         input.up = 1.0f;
+//         input.jump = true;
+//     }
+//     // Keep jump true while button is held
+//     else if (jumpButtonHeld) {
+//         input.jump = true;
+//     }
+//     // Set jump to false when button is released
+//     else {
+//         input.jump = false;
+//         input.up = 0.0f;
+//     }
+//
+//     // Update current animation state
+//     if (input.right) {
+//         currentAnimation = ANIM_WALKING;
+//         playerDirection = FACING_RIGHT;
+//         lastPlayerDirection = FACING_RIGHT;
+//     } else if (input.left) {
+//         currentAnimation = ANIM_WALKING;
+//         playerDirection = FACING_LEFT;
+//         lastPlayerDirection = FACING_LEFT;
+//     } else {
+//         currentAnimation = ANIM_IDLE;
+//     }
+//
+//     if(player.hp <= 0) {
+//         player.hp = 0;
+//     }
+//
+//     player.collider.x = player.position.x - TILE_SIZE / 4.0f;
+//     player.collider.y = player.position.y - TILE_SIZE / 2.0f - 1;
+// }
+
 
 void UpdatePlayer(void) {
     UpdatePlayerInput();
@@ -1258,6 +1426,7 @@ void GetDirection(Entity *instance) {
 }
 
 // Check pixel bellow to determine if Entity is grounded
+
 void GroundCheck(Entity *instance) {
     int x = (int)instance->position.x;
     int y = (int)instance->position.y + 1;
@@ -1291,7 +1460,54 @@ void GroundCheck(Entity *instance) {
             }
         }
     }
+
+    // NEW: Check if standing on a platform
+    if (!instance->isGrounded) {
+        for (size_t i = 0; i < platformCount; i++) {
+            if (instance->position.y >= platforms[i].position.y - instance->height &&
+                instance->position.y <= platforms[i].position.y + 2 &&
+                instance->position.x + instance->width/2 > platforms[i].position.x &&
+                instance->position.x - instance->width/2 < platforms[i].position.x + platforms[i].collider.width) {
+                instance->isGrounded = true;
+            break;
+                }
+        }
+    }
 }
+// void GroundCheck(Entity *instance) {
+//     int x = (int)instance->position.x;
+//     int y = (int)instance->position.y + 1;
+//     instance->isGrounded = false;
+//
+//     // Center point check
+//     int c = MapGetTileWorld(x , y);
+//
+//     if (c != EMPTY) {
+//         int h = TileHeight(y, c);
+//         instance->isGrounded = (y >= h);
+//     }
+//
+//     if (!instance->isGrounded) {
+//         // Left bottom corner check
+//         int xl = (x - instance->width / 2);
+//         int l = MapGetTileWorld(xl , y);
+//
+//         if (l != EMPTY) {
+//             int h = TileHeight(y, l);
+//             instance->isGrounded = (y >= h);
+//         }
+//
+//         if (!instance->isGrounded) {
+//             // Right bottom corner check
+//             int xr = (x + instance->width / 2 - 1);
+//             int r = MapGetTileWorld(xr , y);
+//             if (r != EMPTY) {
+//                 int h = TileHeight(y, r);
+//                 instance->isGrounded = (y >= h);
+//             }
+//         }
+//     }
+// }
 
 // Simplified horizontal acceleration / deacceleration logic
 void MoveCalc(Entity *instance) {
@@ -1916,9 +2132,9 @@ void UnloadMonsters(void) {
 
 void LoadResources(void) {
     levelSpriteSheet        = LoadTexture("../out/spritesheet.png");
-    levelBlockout           = LoadTexture("../out/levelBlockout.png"); // LoadTexture(current_level_texture[current_level]);
+    levelBlockout           = LoadTexture(current_level_texture[current_level]);
     // levelBlockoutBackground = LoadTexture("../out/bg_level_blockout.png");
-    mapImage                = LoadImage("../out/levelBlockout.png");// LoadImage(current_level_texture[current_level]);
+    mapImage                = LoadImage(current_level_texture[current_level]);
     UnloadImage(mapImage);
 }
 
@@ -1992,6 +2208,7 @@ void InitGameComponents(void) {
     InitHorizontalMonsters();
     InitVerticalMonsters();
     InitWorldMap();
+    InitMovingPlatforms();
     InitPlayer();
     GetStageMapColors();
 }
@@ -2045,6 +2262,8 @@ void GameOver(void) {
 void UpdateGame(void) {
 
     UpdatePlayer();
+    UpdateMovingPlatforms();
+    PlayerPlatformCollision();
 
     float deltaTime = GetFrameTime();
     UpdateProjectile(deltaTime);
@@ -2103,6 +2322,7 @@ void LoadNextLevel(void){
     UnloadMonsters();
     UnloadPillars();
     UnloadProjectiles();
+    UnloadMovingPlatforms();
 
     UnloadTexture(levelSpriteSheet);
     UnloadTexture(levelBlockout);
@@ -2129,6 +2349,7 @@ void DrawGame(void) {
     DrawCheckPoints();
     DrawHorizontalMonsters();
     DrawVerticalMonsters();
+    DrawMovingPlatforms();
     DrawPlayer();
 
     EndMode2D();
@@ -2193,6 +2414,7 @@ void UnloadGame(void) {
     UnloadMonsters();
     UnloadPillars();
     UnloadProjectiles();
+    UnloadMovingPlatforms();
 
     UnloadTexture(levelSpriteSheet);
     UnloadTexture(levelBlockout);
