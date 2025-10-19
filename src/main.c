@@ -132,6 +132,7 @@ void ResetVariables(void);
 //*************************************CHECK COLLISION WITH WALL*********************************************
 
 bool CheckWallAtPosition(int x, int y);
+bool IsOnScreen(Vector2 position, float width, float height);
 
 //**********************************************WORLD MAP****************************************************
 
@@ -535,6 +536,19 @@ void CountColors(void) {
     printf("\n");
 }
 
+//****************************Frustum Culling (Only Drawing What's Visible)*************************************
+
+bool IsOnScreen(Vector2 position, float width, float height) {
+    // Get camera bounds in world coordinates
+    Vector2 camPos = GetScreenToWorld2D((Vector2){0, 0}, camera);
+    Vector2 camEnd = GetScreenToWorld2D((Vector2){SCREEN_WIDTH, SCREEN_HEIGHT}, camera);
+
+    return (position.x + width >= camPos.x &&
+    position.x <= camEnd.x &&
+    position.y + height >= camPos.y &&
+    position.y <= camEnd.y);
+}
+
 //**********************************************WORLD MAP****************************************************
 
 void InitWorldMap(void){
@@ -713,9 +727,12 @@ void UpdateTreasure(void) {
 void DrawTreasure(void) {
     for (size_t i = 0; i < MAX_TREASURE; i++) {
         Rectangle treasureRect = (Rectangle){ TILE_SIZE*2, TILE_SIZE, TILE_SIZE, TILE_SIZE };
-        if (treasure[i].visible) {
-            DrawTextureRec(levelSpriteSheet, treasureRect, treasure[i].position, GOLD);
-            // DrawText(TextFormat("%d", i), treasure[i].position.x, treasure[i].position.y - 16, 8, WHITE);
+        if(IsOnScreen((Vector2){treasureRect.x, treasureRect.y}, TILE_SIZE, TILE_SIZE))
+        {
+            if (treasure[i].visible) {
+                DrawTextureRec(levelSpriteSheet, treasureRect, treasure[i].position, GOLD);
+                // DrawText(TextFormat("%d", i), treasure[i].position.x, treasure[i].position.y - 16, 8, WHITE);
+            }
         }
     }
 }
@@ -767,10 +784,13 @@ void InitSpikes(void) {
 
 void DrawSpikes(void){
     for (size_t i = 0; i < MAX_SPIKES; i++) {
-        if (spikes[i].position.x != 0 && spikes[i].position.y != 0) {
-            DrawTextureRec(spikes[i].texture, spikes[i].frame, spikes[i].position, LIGHTGRAY);
-            // DrawText(TextFormat("%d", i), spikes[i].position.x, spikes[i].position.y - 16, 8, WHITE);
-            //DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
+        if(IsOnScreen(spikes[i].position, TILE_SIZE, TILE_SIZE))
+        {
+            if (spikes[i].position.x != 0 && spikes[i].position.y != 0) {
+                DrawTextureRec(spikes[i].texture, spikes[i].frame, spikes[i].position, LIGHTGRAY);
+                // DrawText(TextFormat("%d", i), spikes[i].position.x, spikes[i].position.y - 16, 8, WHITE);
+                //DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
+            }
         }
     }
 }
@@ -897,9 +917,12 @@ void DrawRotatingPillarGroups(void) {
     for (size_t g = 0; g < rotatingPillarCount; g++) {
         // Draw each pillar in the group
         for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
-            DrawCircleV(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, YELLOW);
-            DrawCircle(pillarGroups[g].center.x, pillarGroups[g].center.y, 6.0f, MAROON);
-            // DrawText(TextFormat("%d", i), pillarGroups[g].pillars[i].position.x, pillarGroups[g].pillars[i].position.y, 8, WHITE);
+            if(IsOnScreen(pillarGroups[g].pillars[i].position, TILE_SIZE, TILE_SIZE))
+            {
+                DrawCircleV(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, YELLOW);
+                DrawCircle(pillarGroups[g].center.x, pillarGroups[g].center.y, 6.0f, MAROON);
+                // DrawText(TextFormat("%d", i), pillarGroups[g].pillars[i].position.x, pillarGroups[g].pillars[i].position.y, 8, WHITE);
+            }
         }
         // DrawText(TextFormat("%d", g), pillarGroups[g].center.x, pillarGroups[g].center.y, 8, WHITE);
     }
@@ -998,10 +1021,13 @@ void UpdateProjectile(float deltaTime) {
 void DrawProjectile(void) {
     for(size_t i = 0; i < MAX_PROJECTILES; i++) {
         if(projectiles[i].active) {
-            DrawCircleLines(projectiles[i].startPos.x, projectiles[i].startPos.y, projectiles[i].radius, RED);
-            DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);
-            DrawCircleV(projectiles[i].startPos, projectiles[i].radius, BLACK);
-            //DrawText(TextFormat("%d", i), projectiles[i].position.x - 16, projectiles[i].position.y - 4, 8, WHITE);
+            if(IsOnScreen(projectiles[i].startPos, TILE_SIZE, TILE_SIZE))
+            {
+                DrawCircleLines(projectiles[i].startPos.x, projectiles[i].startPos.y, projectiles[i].radius, RED);
+                DrawCircleV(projectiles[i].position, projectiles[i].radius, RED);
+                DrawCircleV(projectiles[i].startPos, projectiles[i].radius, BLACK);
+                //DrawText(TextFormat("%d", i), projectiles[i].position.x - 16, projectiles[i].position.y - 4, 8, WHITE);
+            }
         }
     }
 }
@@ -1097,7 +1123,7 @@ void UpdatePlayerInput(void) {
 
     //For jumping button needs to be toggled - allows pre-jump buffered (if held, jumps as soon as lands)
     if (input.up) input.jump = true;
-    else if (input.up && GetFrameTime() >= 0.5f) input.jump = false;
+    else if (!input.up && GetFrameTime() >= 0.5f) input.jump = false;  // Fixed: changed condition
 
     // Update current animation state based on game logic and collisions
     if (input.right) {
@@ -1108,11 +1134,8 @@ void UpdatePlayerInput(void) {
         currentAnimation = ANIM_WALKING;
         playerDirection = FACING_LEFT;
         lastPlayerDirection = FACING_LEFT;
-    } else if (input.up && player.velocity.y > 0.0f) {
-        currentAnimation = ANIM_JUMPING;
-        player.velocity = (Vector2){ player.velocity.x, player.velocity.y * 0.5f };
     } else {
-        currentAnimation = ANIM_IDLE; // Player's x position is not changing
+        currentAnimation = ANIM_IDLE;
     }
 
     if(player.hp <= 0) {
@@ -1294,6 +1317,7 @@ void Jump(Entity *instance) {
 }
 
 // Gravity calculation and Jump detection
+// Gravity calculation and Jump detection
 void GravityCalc(Entity *instance) {
     static bool wasGrounded = false;
 
@@ -1312,13 +1336,13 @@ void GravityCalc(Entity *instance) {
         wasGrounded = true;
 
     } else {
-        if (instance->isJumping) {
-            if (!instance->control->jump) {
-                instance->isJumping = false;
+        // IMPORTANT: Check if player released jump button while moving upward
+        if (instance->isJumping && !instance->control->jump) {
+            instance->isJumping = false;
 
-                if (instance->velocity.y < instance->jumpRelease) {
-                    instance->velocity.y = instance->jumpRelease;
-                }
+            // Cut vertical velocity for variable jump height
+            if (instance->velocity.y < 0) {  // Only if moving upward
+                instance->velocity.y *= 0.5f;  // Cut jump short
             }
         }
         wasGrounded = false;
@@ -1332,15 +1356,60 @@ void GravityCalc(Entity *instance) {
         instance->velocity.y = -instance->jumpImpulse;
     }
 
-    // Inside your GravityCalc function
+    // Running speed toggle
     if (IsKeyDown(KEY_LEFT_SHIFT) ||IsKeyDown(KEY_RIGHT_SHIFT)|| IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
-        // Increase the player's speed to make them run
         player.maxSpd = RUNNING_SPEED;
     } else {
-        // Reset the maximum speed to normal value
         player.maxSpd = NORMAL_SPEED;
     }
 }
+// void GravityCalc(Entity *instance) {
+//     static bool wasGrounded = false;
+//
+//     if (instance->isGrounded) {
+//         if (instance->isJumping) {
+//             instance->isJumping = false;
+//             instance->control->jump = false;    // Cancel input button
+//         } else if (!instance->isJumping && instance->control->jump) {
+//             Jump(instance);
+//             PlaySound(soundJump);
+//         }
+//
+//         if(!wasGrounded) {
+//             PlaySound(soundFall);
+//         }
+//         wasGrounded = true;
+//
+//     } else {
+//         if (instance->isJumping) {
+//             if (!instance->control->jump) {
+//                 instance->isJumping = false;
+//
+//                 if (instance->velocity.y < instance->jumpRelease) {
+//                     instance->velocity.y = instance->jumpRelease;
+//                 }
+//             }
+//         }
+//         wasGrounded = false;
+//     }
+//
+//     // Add gravity
+//     instance->velocity.y += instance->gravity*delta;
+//
+//     // Limit falling to negative jump value
+//     if (instance->velocity.y > -instance->jumpImpulse) {
+//         instance->velocity.y = -instance->jumpImpulse;
+//     }
+//
+//     // Inside your GravityCalc function
+//     if (IsKeyDown(KEY_LEFT_SHIFT) ||IsKeyDown(KEY_RIGHT_SHIFT)|| IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
+//         // Increase the player's speed to make them run
+//         player.maxSpd = RUNNING_SPEED;
+//     } else {
+//         // Reset the maximum speed to normal value
+//         player.maxSpd = NORMAL_SPEED;
+//     }
+// }
 
 // Main collision check function
 void CollisionCheck(Entity *instance) {
@@ -1475,11 +1544,13 @@ void InitCheckpoints(void) {
 
 void DrawCheckPoints(void) {
     for (size_t i = 0; i < MAX_CHECKPOINTS; i++) {
-        if (checkpoints[i].position.x != 0 && checkpoints[i].position.y != 0) {
-            DrawTextureRec(checkpoints[i].texture, checkpoints[i].frame, checkpoints[i].position, WHITE);
-            // DrawText(TextFormat("%d", i), checkpoints[i].position.x, checkpoints[i].position.y - 16, 8, WHITE);
-            //DrawRectangleLines(checkpoints[i].position.x, checkpoints[i].position.y, checkpoints[i].frame.width, checkpoints[i].frame.height, GREEN);
-            //DrawRectangleLines(checkpoints[i].collider.x, checkpoints[i].collider.y, checkpoints[i].frame.width, checkpoints[i].frame.height, ORANGE);
+        if (IsOnScreen(checkpoints[i].position, TILE_SIZE, TILE_SIZE)) {
+            if (checkpoints[i].position.x != 0 && checkpoints[i].position.y != 0) {
+                DrawTextureRec(checkpoints[i].texture, checkpoints[i].frame, checkpoints[i].position, WHITE);
+                // DrawText(TextFormat("%d", i), checkpoints[i].position.x, checkpoints[i].position.y - 16, 8, WHITE);
+                //DrawRectangleLines(checkpoints[i].position.x, checkpoints[i].position.y, checkpoints[i].frame.width, checkpoints[i].frame.height, GREEN);
+                //DrawRectangleLines(checkpoints[i].collider.x, checkpoints[i].collider.y, checkpoints[i].frame.width, checkpoints[i].frame.height, ORANGE);
+            }
         }
     }
 }
@@ -1722,9 +1793,11 @@ void DrawHorizontalMonsters(void) {
             monsterHorizontal[i].frame.height // Frame height
         };
 
-        // Draw the monster using the calculated frame rectangle
-        DrawTextureRec(monsterHorizontal[i].texture, frameRect, monsterHorizontal[i].position, WHITE);
-        // DrawText(TextFormat("%d", i), monsterHorizontal[i].position.x, monsterHorizontal[i].position.y - 16, 8, WHITE);
+        if (IsOnScreen((Vector2){frameRect.x, frameRect.y}, TILE_SIZE, TILE_SIZE)) {
+            // Draw the monster using the calculated frame rectangle
+            DrawTextureRec(monsterHorizontal[i].texture, frameRect, monsterHorizontal[i].position, WHITE);
+            // DrawText(TextFormat("%d", i), monsterHorizontal[i].position.x, monsterHorizontal[i].position.y - 16, 8, WHITE);
+        }
     }
 }
 
@@ -1738,9 +1811,11 @@ void DrawVerticalMonsters(void) {
             monsterVertical[i].frame.height // Frame height
         };
 
-        // Draw the monster using the calculated frame rectangle
-        DrawTextureRec(monsterVertical[i].texture, frameRect, monsterVertical[i].position, GOLD);
-        // DrawText(TextFormat("%d", i), monsterVertical[i].position.x, monsterVertical[i].position.y - 16, 8, WHITE);
+        if (IsOnScreen((Vector2){frameRect.x, frameRect.y}, TILE_SIZE, TILE_SIZE)) {
+            // Draw the monster using the calculated frame rectangle
+            DrawTextureRec(monsterVertical[i].texture, frameRect, monsterVertical[i].position, GOLD);
+            // DrawText(TextFormat("%d", i), monsterVertical[i].position.x, monsterVertical[i].position.y - 16, 8, WHITE);
+        }
     }
 }
 
