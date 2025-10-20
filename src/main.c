@@ -1,6 +1,6 @@
 /*
- I want the pla*yer to have variable jump height
- */
+ how do I make the platforms go up and down?
+*/
 
 #include "raylib.h"
 #include "raymath.h"
@@ -49,7 +49,7 @@ Input input;
 
 #define MAX_TILES              21
 #define MAX_ROOMS               4
-#define MAX_COLORS             13
+#define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
 #define MAX_LEVEL_TEXTURES      6
 #define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
@@ -75,7 +75,6 @@ size_t MAX_VERTICAL_MONSTERS   = 0;
 size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
-size_t MAX_PLATFORMS           = 0;
 
 char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
 
@@ -101,7 +100,7 @@ int *tiles = NULL;
 Image mapImage   = {0};
 int tileType     = {0};
 Color pixelColor = {0};
-/*Color mapColors[TILE_MAP_WIDTH][TILE_MAP_HEIGHT] = {0}; */// Declare an array to store pre-processed colors
+// Color mapColors[TILE_MAP_WIDTH][TILE_MAP_HEIGHT] = {0};   // Declare an array to store pre-processed colors
 Color **mapColors = NULL;
 
 int timer          = {0};
@@ -157,20 +156,24 @@ void UnloadMap(void);
 
 //**********************************************MOVING PLATFORMS****************************************************
 
-size_t platformCount = 0;
+size_t horizontalPlatformCount = 0;
+size_t verticalPlatformCount = 0;
 
 typedef struct {
     Vector2 position;
     Vector2 startPos;
     Vector2 velocity;
     int movementDistance;
-    int direction;  // 0 = horizontal, 1 = vertical
     Rectangle collider;
     Texture2D texture;
     Rectangle frame;
 } MovingPlatform;
 
-MovingPlatform *platforms = NULL;
+MovingPlatform *horizontalPlatforms = NULL;
+MovingPlatform *verticalPlatforms = NULL;
+
+size_t MAX_HORIZONTAL_PLATFORMS = 0;
+size_t MAX_VERTICAL_PLATFORMS = 0;
 
 void InitMovingPlatforms(void);
 void UpdateMovingPlatforms(void);
@@ -256,7 +259,6 @@ float shootCooldDown = 0.0f;
 
 void InitProjectiles(void);
 void SpawnProjectiles(void);
-// Check if a projectile will hit a wall
 bool CheckProjectileWallCollision(Projectile *proj);
 void UpdateProjectile(float deltaTime);
 void DrawProjectile(void);
@@ -509,6 +511,7 @@ void CountColors(void) {
     // MAX_SPIKES              = 0;
     // MAX_HORIZONTAL_MONSTERS = 0;
     // MAX_VERTICAL_MONSTERS   = 0;
+    // MAX_PLATFORMS           = 0;
 
     // Iterate through the map image
     for (int y = 0; y < mapImage.height; y++) {
@@ -532,7 +535,9 @@ void CountColors(void) {
             }else if ( 255 == pixelColor.r &&   0 == pixelColor.g && 255 == pixelColor.b) {
                 MAX_PROJECTILES++;
             }else if (255 == pixelColor.r && 255 == pixelColor.g && 0 == pixelColor.b) {
-                MAX_PLATFORMS++;  // Add size_t MAX_PLATFORMS = 0; to globals
+                MAX_HORIZONTAL_PLATFORMS++;
+            }else if (30 == pixelColor.r && 30 == pixelColor.g && 70 == pixelColor.b) {
+                MAX_VERTICAL_PLATFORMS++;
             }
         }
     }
@@ -555,6 +560,8 @@ void CountColors(void) {
     printf("MAX_HORIZONTAL_MONSTERS: %zu\n", MAX_HORIZONTAL_MONSTERS);
     printf("MAX_VERTICAL_MONSTERS: %zu\n", MAX_VERTICAL_MONSTERS);
     printf("MAX_PROJECTILES: %zu\n", MAX_PROJECTILES);
+    printf("MAX_VERTICAL_PLATFORMS: %zu\n", MAX_VERTICAL_PLATFORMS);
+    printf("MAX_HORIZONTAL_PLATFORMS: %zu\n", MAX_HORIZONTAL_PLATFORMS);
     printf("NUM_PILLAR_GROUPS: %d\n", NUM_PILLAR_GROUPS);
     printf("NUM_CIRCLES_IN_PILLAR_GROUP: %d\n", NUM_CIRCLES_IN_PILLAR_GROUP);
     printf("\n");
@@ -706,10 +713,17 @@ void UnloadMap(void){
 //*************************************Moving Platforms*****************************************
 
 void InitMovingPlatforms(void) {
-    platforms = (MovingPlatform*)calloc(MAX_PLATFORMS, sizeof(MovingPlatform));
+    // Horizontal platforms
+    horizontalPlatforms = (MovingPlatform*)calloc(MAX_HORIZONTAL_PLATFORMS, sizeof(MovingPlatform));
+    if(horizontalPlatforms == NULL && MAX_HORIZONTAL_PLATFORMS > 0) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for Horizontal Platforms!");
+        CloseWindow();
+    }
 
-    if(platforms == NULL) {
-        TraceLog(LOG_ERROR, "Failed to allocate memory for Platforms!");
+    // Vertical platforms
+    verticalPlatforms = (MovingPlatform*)calloc(MAX_VERTICAL_PLATFORMS, sizeof(MovingPlatform));
+    if(verticalPlatforms == NULL && MAX_VERTICAL_PLATFORMS > 0) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for Vertical Platforms!");
         CloseWindow();
     }
 
@@ -717,79 +731,118 @@ void InitMovingPlatforms(void) {
         for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
             pixelColor = mapColors[x][y];
 
-            if ((255 == pixelColor.r && 255 == pixelColor.g && 0 == pixelColor.b) && platformCount < MAX_PLATFORMS) {
-                platforms[platformCount].position = (Vector2){x * TILE_SIZE, y * TILE_SIZE};
-                platforms[platformCount].startPos = platforms[platformCount].position;
-                platforms[platformCount].direction = 0; // 0 = horizontal, 1 = vertical
-                platforms[platformCount].velocity = (Vector2){1.0f, 0.0f}; // Adjust speed
-                platforms[platformCount].movementDistance = TILE_SIZE * 4;
-                platforms[platformCount].texture = levelSpriteSheet;
-                platforms[platformCount].frame = (Rectangle){0, 0, TILE_SIZE * 2, TILE_SIZE};
-                platforms[platformCount].collider = (Rectangle){
-                    platforms[platformCount].position.x,
-                    platforms[platformCount].position.y,
+            // Horizontal platforms (yellow)
+            if ((255 == pixelColor.r && 255 == pixelColor.g && 0 == pixelColor.b) && horizontalPlatformCount < MAX_HORIZONTAL_PLATFORMS) {
+                horizontalPlatforms[horizontalPlatformCount].position = (Vector2){x * TILE_SIZE, y * TILE_SIZE};
+                horizontalPlatforms[horizontalPlatformCount].startPos = horizontalPlatforms[horizontalPlatformCount].position;
+                horizontalPlatforms[horizontalPlatformCount].velocity = (Vector2){1.0f, 0.0f};
+                horizontalPlatforms[horizontalPlatformCount].movementDistance = TILE_SIZE * 4;
+                horizontalPlatforms[horizontalPlatformCount].texture = levelSpriteSheet;
+                horizontalPlatforms[horizontalPlatformCount].frame = (Rectangle){0, 0, TILE_SIZE * 2, TILE_SIZE};
+                horizontalPlatforms[horizontalPlatformCount].collider = (Rectangle){
+                    horizontalPlatforms[horizontalPlatformCount].position.x,
+                    horizontalPlatforms[horizontalPlatformCount].position.y,
                     TILE_SIZE * 2,
                     TILE_SIZE
                 };
-                platformCount++;
+                horizontalPlatformCount++;
+            }
+            // Vertical platforms
+            else if ((30 == pixelColor.r && 30 == pixelColor.g && 70 == pixelColor.b) && verticalPlatformCount < MAX_VERTICAL_PLATFORMS) {
+                verticalPlatforms[verticalPlatformCount].position = (Vector2){x * TILE_SIZE, y * TILE_SIZE};
+                verticalPlatforms[verticalPlatformCount].startPos = verticalPlatforms[verticalPlatformCount].position;
+                verticalPlatforms[verticalPlatformCount].velocity = (Vector2){0.0f, 1.0f};
+                verticalPlatforms[verticalPlatformCount].movementDistance = TILE_SIZE * 4;
+                verticalPlatforms[verticalPlatformCount].texture = levelSpriteSheet;
+                verticalPlatforms[verticalPlatformCount].frame = (Rectangle){0, 0, TILE_SIZE * 2, TILE_SIZE};
+                verticalPlatforms[verticalPlatformCount].collider = (Rectangle){
+                    verticalPlatforms[verticalPlatformCount].position.x,
+                    verticalPlatforms[verticalPlatformCount].position.y,
+                    TILE_SIZE * 2,
+                    TILE_SIZE
+                };
+                verticalPlatformCount++;
             }
         }
     }
 }
 
 void UpdateMovingPlatforms(void) {
-    for (size_t i = 0; i < platformCount; i++) {
-        if (platforms[i].direction == 0) { // Horizontal
-            platforms[i].position.x += platforms[i].velocity.x;
-            float distance = fabsf(platforms[i].position.x - platforms[i].startPos.x);
+    // Update horizontal platforms
+    for (size_t i = 0; i < horizontalPlatformCount; i++) {
+        horizontalPlatforms[i].position.x += horizontalPlatforms[i].velocity.x;
+        float distance = fabsf(horizontalPlatforms[i].position.x - horizontalPlatforms[i].startPos.x);
 
-            if (distance >= platforms[i].movementDistance) {
-                platforms[i].velocity.x = -platforms[i].velocity.x;
-            }
-        } else { // Vertical
-            platforms[i].position.y += platforms[i].velocity.y;
-            float distance = fabsf(platforms[i].position.y - platforms[i].startPos.y);
-
-            if (distance >= platforms[i].movementDistance) {
-                platforms[i].velocity.y = -platforms[i].velocity.y;
-            }
+        if (distance >= horizontalPlatforms[i].movementDistance) {
+            horizontalPlatforms[i].velocity.x = -horizontalPlatforms[i].velocity.x;
         }
 
-        platforms[i].collider.x = platforms[i].position.x;
-        platforms[i].collider.y = platforms[i].position.y;
+        horizontalPlatforms[i].collider.x = horizontalPlatforms[i].position.x;
+        horizontalPlatforms[i].collider.y = horizontalPlatforms[i].position.y;
+    }
+
+    // Update vertical platforms
+    for (size_t i = 0; i < verticalPlatformCount; i++) {
+        verticalPlatforms[i].position.y += verticalPlatforms[i].velocity.y;
+        float distance = fabsf(verticalPlatforms[i].position.y - verticalPlatforms[i].startPos.y);
+
+        if (distance >= verticalPlatforms[i].movementDistance) {
+            verticalPlatforms[i].velocity.y = -verticalPlatforms[i].velocity.y;
+        }
+
+        verticalPlatforms[i].collider.x = verticalPlatforms[i].position.x;
+        verticalPlatforms[i].collider.y = verticalPlatforms[i].position.y;
     }
 }
 
 void PlayerPlatformCollision(void) {
-    for (size_t i = 0; i < platformCount; i++) {
-        // Check if player is landing on platform from above
+    // Check horizontal platforms
+    for (size_t i = 0; i < horizontalPlatformCount; i++) {
         if (player.velocity.y > 0 &&
-            player.position.x + player.width/2 > platforms[i].position.x &&
-            player.position.x - player.width/2 < platforms[i].position.x + platforms[i].collider.width &&
-            player.position.y >= platforms[i].position.y - player.height &&
-            player.position.y < platforms[i].position.y + 4) {
+            player.position.x + player.width/2 > horizontalPlatforms[i].position.x &&
+            player.position.x - player.width/2 < horizontalPlatforms[i].position.x + horizontalPlatforms[i].collider.width &&
+            player.position.y >= horizontalPlatforms[i].position.y - player.height &&
+            player.position.y < horizontalPlatforms[i].position.y + 4) {
 
-            player.position.y = platforms[i].position.y - 1;
+            player.position.y = horizontalPlatforms[i].position.y - 1;
         player.velocity.y = 0;
         player.isGrounded = true;
+        player.position.x += horizontalPlatforms[i].velocity.x;
+            }
+    }
 
-        // Move player with platform
-        player.position.x += platforms[i].velocity.x;
-        player.position.y += platforms[i].velocity.y;
+    // Check vertical platforms
+    for (size_t i = 0; i < verticalPlatformCount; i++) {
+        if (player.velocity.y > 0 &&
+            player.position.x + player.width/2 > verticalPlatforms[i].position.x &&
+            player.position.x - player.width/2 < verticalPlatforms[i].position.x + verticalPlatforms[i].collider.width &&
+            player.position.y >= verticalPlatforms[i].position.y - player.height &&
+            player.position.y < verticalPlatforms[i].position.y + 4) {
+
+            player.position.y = verticalPlatforms[i].position.y - 1;
+        player.velocity.y = 0;
+        player.isGrounded = true;
+        player.position.y += verticalPlatforms[i].velocity.y;
             }
     }
 }
 
 void DrawMovingPlatforms(void) {
-    for (size_t i = 0; i < platformCount; i++) {
-        DrawTextureRec(platforms[i].texture, platforms[i].frame, platforms[i].position, BROWN);
+    for (size_t i = 0; i < horizontalPlatformCount; i++) {
+        DrawTextureRec(horizontalPlatforms[i].texture, horizontalPlatforms[i].frame, horizontalPlatforms[i].position, BROWN);
+    }
+    for (size_t i = 0; i < verticalPlatformCount; i++) {
+        DrawTextureRec(verticalPlatforms[i].texture, verticalPlatforms[i].frame, verticalPlatforms[i].position, DARKBLUE);
     }
 }
 
 void UnloadMovingPlatforms(void) {
-    free(platforms);
-    platforms = NULL;
-    platformCount = 0;
+    free(horizontalPlatforms);
+    horizontalPlatforms = NULL;
+    free(verticalPlatforms);
+    verticalPlatforms = NULL;
+    horizontalPlatformCount = 0;
+    verticalPlatformCount = 0;
 }
 
 //**********************************************TREASURE****************************************************
@@ -1269,51 +1322,6 @@ void UpdatePlayerInput(void) {
     player.collider.y = player.position.y - TILE_SIZE / 2.0f - 1;
 }
 
-// void UpdatePlayerInput(void) {
-//     input.right = (float)(IsKeyDown('D')    || IsKeyDown(KEY_RIGHT) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT));
-//     input.left  = (float)(IsKeyDown('A')    || IsKeyDown(KEY_LEFT)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT));
-//     input.down  = (float)(IsKeyDown('S')    || IsKeyDown(KEY_DOWN)  || IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_UP));
-//
-//     // CHANGED: Use IsKeyDown to check if button is HELD, not just pressed
-//     bool jumpButtonHeld = IsKeyDown('W') || IsKeyDown(KEY_UP) || IsKeyDown(KEY_SPACE) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
-//
-//     // Set jump to true when button is first pressed
-//     if (jumpButtonHeld && !input.jump) {
-//         input.up = 1.0f;
-//         input.jump = true;
-//     }
-//     // Keep jump true while button is held
-//     else if (jumpButtonHeld) {
-//         input.jump = true;
-//     }
-//     // Set jump to false when button is released
-//     else {
-//         input.jump = false;
-//         input.up = 0.0f;
-//     }
-//
-//     // Update current animation state
-//     if (input.right) {
-//         currentAnimation = ANIM_WALKING;
-//         playerDirection = FACING_RIGHT;
-//         lastPlayerDirection = FACING_RIGHT;
-//     } else if (input.left) {
-//         currentAnimation = ANIM_WALKING;
-//         playerDirection = FACING_LEFT;
-//         lastPlayerDirection = FACING_LEFT;
-//     } else {
-//         currentAnimation = ANIM_IDLE;
-//     }
-//
-//     if(player.hp <= 0) {
-//         player.hp = 0;
-//     }
-//
-//     player.collider.x = player.position.x - TILE_SIZE / 4.0f;
-//     player.collider.y = player.position.y - TILE_SIZE / 2.0f - 1;
-// }
-
-
 void UpdatePlayer(void) {
     UpdatePlayerInput();
     EntityMoveUpdate(&player);
@@ -1425,7 +1433,7 @@ void GetDirection(Entity *instance) {
     instance->direction = (instance->control->right - instance->control->left);
 }
 
-// Check pixel bellow to determine if Entity is grounded
+// Check pixel below to determine if Entity is grounded
 
 void GroundCheck(Entity *instance) {
     int x = (int)instance->position.x;
@@ -1461,53 +1469,33 @@ void GroundCheck(Entity *instance) {
         }
     }
 
-    // NEW: Check if standing on a platform
+    // At the end of GroundCheck(), replace the platform check with:
     if (!instance->isGrounded) {
-        for (size_t i = 0; i < platformCount; i++) {
-            if (instance->position.y >= platforms[i].position.y - instance->height &&
-                instance->position.y <= platforms[i].position.y + 2 &&
-                instance->position.x + instance->width/2 > platforms[i].position.x &&
-                instance->position.x - instance->width/2 < platforms[i].position.x + platforms[i].collider.width) {
+        // Check horizontal platforms
+        for (size_t i = 0; i < horizontalPlatformCount; i++) {
+            if (instance->position.y >= horizontalPlatforms[i].position.y - instance->height &&
+                instance->position.y <= horizontalPlatforms[i].position.y + 2 &&
+                instance->position.x + instance->width/2 > horizontalPlatforms[i].position.x &&
+                instance->position.x - instance->width/2 < horizontalPlatforms[i].position.x + horizontalPlatforms[i].collider.width) {
                 instance->isGrounded = true;
             break;
                 }
         }
+
+        // Check vertical platforms
+        if (!instance->isGrounded) {
+            for (size_t i = 0; i < verticalPlatformCount; i++) {
+                if (instance->position.y >= verticalPlatforms[i].position.y - instance->height &&
+                    instance->position.y <= verticalPlatforms[i].position.y + 2 &&
+                    instance->position.x + instance->width/2 > verticalPlatforms[i].position.x &&
+                    instance->position.x - instance->width/2 < verticalPlatforms[i].position.x + verticalPlatforms[i].collider.width) {
+                    instance->isGrounded = true;
+                break;
+                    }
+            }
+        }
     }
 }
-// void GroundCheck(Entity *instance) {
-//     int x = (int)instance->position.x;
-//     int y = (int)instance->position.y + 1;
-//     instance->isGrounded = false;
-//
-//     // Center point check
-//     int c = MapGetTileWorld(x , y);
-//
-//     if (c != EMPTY) {
-//         int h = TileHeight(y, c);
-//         instance->isGrounded = (y >= h);
-//     }
-//
-//     if (!instance->isGrounded) {
-//         // Left bottom corner check
-//         int xl = (x - instance->width / 2);
-//         int l = MapGetTileWorld(xl , y);
-//
-//         if (l != EMPTY) {
-//             int h = TileHeight(y, l);
-//             instance->isGrounded = (y >= h);
-//         }
-//
-//         if (!instance->isGrounded) {
-//             // Right bottom corner check
-//             int xr = (x + instance->width / 2 - 1);
-//             int r = MapGetTileWorld(xr , y);
-//             if (r != EMPTY) {
-//                 int h = TileHeight(y, r);
-//                 instance->isGrounded = (y >= h);
-//             }
-//         }
-//     }
-// }
 
 // Simplified horizontal acceleration / deacceleration logic
 void MoveCalc(Entity *instance) {
@@ -1532,7 +1520,6 @@ void Jump(Entity *instance) {
     instance->jumpTime = 0.0f; // Reset jumpTime
 }
 
-// Gravity calculation and Jump detection
 // Gravity calculation and Jump detection
 void GravityCalc(Entity *instance) {
     static bool wasGrounded = false;
@@ -1579,53 +1566,6 @@ void GravityCalc(Entity *instance) {
         player.maxSpd = NORMAL_SPEED;
     }
 }
-// void GravityCalc(Entity *instance) {
-//     static bool wasGrounded = false;
-//
-//     if (instance->isGrounded) {
-//         if (instance->isJumping) {
-//             instance->isJumping = false;
-//             instance->control->jump = false;    // Cancel input button
-//         } else if (!instance->isJumping && instance->control->jump) {
-//             Jump(instance);
-//             PlaySound(soundJump);
-//         }
-//
-//         if(!wasGrounded) {
-//             PlaySound(soundFall);
-//         }
-//         wasGrounded = true;
-//
-//     } else {
-//         if (instance->isJumping) {
-//             if (!instance->control->jump) {
-//                 instance->isJumping = false;
-//
-//                 if (instance->velocity.y < instance->jumpRelease) {
-//                     instance->velocity.y = instance->jumpRelease;
-//                 }
-//             }
-//         }
-//         wasGrounded = false;
-//     }
-//
-//     // Add gravity
-//     instance->velocity.y += instance->gravity*delta;
-//
-//     // Limit falling to negative jump value
-//     if (instance->velocity.y > -instance->jumpImpulse) {
-//         instance->velocity.y = -instance->jumpImpulse;
-//     }
-//
-//     // Inside your GravityCalc function
-//     if (IsKeyDown(KEY_LEFT_SHIFT) ||IsKeyDown(KEY_RIGHT_SHIFT)|| IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT)) {
-//         // Increase the player's speed to make them run
-//         player.maxSpd = RUNNING_SPEED;
-//     } else {
-//         // Reset the maximum speed to normal value
-//         player.maxSpd = NORMAL_SPEED;
-//     }
-// }
 
 // Main collision check function
 void CollisionCheck(Entity *instance) {
