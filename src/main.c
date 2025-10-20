@@ -51,7 +51,7 @@ Input input;
 #define MAX_ROOMS               4
 #define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
-#define MAX_LEVEL_TEXTURES      6
+#define MAX_LEVEL_TEXTURES      7
 #define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
 
 #define NUM_CIRCLES_IN_PILLAR_GROUP 4
@@ -76,7 +76,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -2328,15 +2328,20 @@ void DrawGame(void) {
     DrawWorldMap();
     DrawText(TextFormat("%i/%d", score, MAX_TREASURE), TILE_SIZE*2.7, TILE_SIZE, 22, WHITE);
 
+    Rectangle background_rect = (Rectangle){GetScreenWidth()/2.9f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 60, TILE_SIZE * 32, TILE_SIZE * 16};
+
     if (win) {
         player.velocity = (Vector2){0.0f,0.0f};
-        DrawText("WINNER!", GetScreenWidth()/2.7f - MeasureText("WINNER!", 20)/2.0f, GetScreenHeight()/3.0f - 50, 60, DARKBLUE);
-        DrawText("PRESS [R] or (Y/Triangle) TO PLAY AGAIN", GetScreenWidth()/2.0f - MeasureText("PRESS [R] or (Y/Triangle) TO PLAY AGAIN", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
+
+        Color tint = (Color){9,10,59,255};
+        DrawRectangleRec(background_rect, tint);
+        DrawText("NEXT LEVEL?", GetScreenWidth()/2.7f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 50, 60, RED);
+        DrawText("PRESS [R] or (Y/Triangle) TO CONTINUE", GetScreenWidth()/2.1f - MeasureText("PRESS [R] or (Y/Triangle) TO CONTINUE", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
 
         if(playerDeathCount) {
             DrawText(TextFormat("Deaths: %d", playerDeathCount), GetScreenWidth()/2.2f - MeasureText("Deaths:  ", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, DARKGREEN);
         } else {
-            DrawText(TextFormat("!PERFECT, RUN!", playerDeathCount), GetScreenWidth()/2.4f - MeasureText("!PERFECT, RUN!", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, GREEN);
+            DrawText(TextFormat("**NO DEATH, RUN**", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("!PERFECT, RUN!", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, GREEN);
         }
     }
 
