@@ -51,7 +51,7 @@ Input input;
 #define MAX_ROOMS               4
 #define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
-#define MAX_LEVEL_TEXTURES      7
+#define MAX_LEVEL_TEXTURES      6
 #define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
 
 #define NUM_CIRCLES_IN_PILLAR_GROUP 4
@@ -76,7 +76,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
 
 typedef enum {
     STATE_NORMAL,
