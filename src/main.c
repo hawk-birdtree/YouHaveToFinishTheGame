@@ -1,7 +1,3 @@
-/*
- how do I make the platforms go up and down?
-*/
-
 #include "raylib.h"
 #include "raymath.h"
 #include <stdlib.h>
@@ -120,7 +116,8 @@ typedef struct {
 } ColorCount;
 
 ColorCount colorCounts[MAX_COLORS] = {0};
-int colorCountIndex = {0};
+int colorCountIndex = {0};\
+size_t projectileCount = 0;
 
 bool ColorMatches(ColorCount color, int r, int g, int b);
 void IncrementColorCount(int r, int g, int b);
@@ -470,6 +467,7 @@ void ResetVariables(void) {
     rotatingPillarCount     = 0;
     pathIndexHorizontal     = 0;
     pathIndexVertical       = 0;
+    projectileCount         = 0;
 
     MAX_PROJECTILES         = 0;
     MAX_TREASURE     		= 0;
@@ -504,14 +502,17 @@ void IncrementColorCount(int r, int g, int b) {
 }
 
 void CountColors(void) {
+    colorCountIndex = 0;
 
     MAX_PROJECTILES         = 0;
     MAX_TREASURE     		= 0;
-    // MAX_CHECKPOINTS         = 0;
-    // MAX_SPIKES              = 0;
-    // MAX_HORIZONTAL_MONSTERS = 0;
-    // MAX_VERTICAL_MONSTERS   = 0;
+    MAX_CHECKPOINTS         = 0;
+    MAX_SPIKES              = 0;
+    MAX_HORIZONTAL_MONSTERS = 0;
+    MAX_VERTICAL_MONSTERS   = 0;
     // MAX_PLATFORMS           = 0;
+    MAX_HORIZONTAL_PLATFORMS = 0; // Add this too!
+    MAX_VERTICAL_PLATFORMS   = 0; // Add this too!
 
     // Iterate through the map image
     for (int y = 0; y < mapImage.height; y++) {
@@ -623,8 +624,8 @@ void GetStageMapColors(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -713,6 +714,9 @@ void UnloadMap(void){
 //*************************************Moving Platforms*****************************************
 
 void InitMovingPlatforms(void) {
+    horizontalPlatformCount = 0;
+    verticalPlatformCount = 0;
+
     // Horizontal platforms
     horizontalPlatforms = (MovingPlatform*)calloc(MAX_HORIZONTAL_PLATFORMS, sizeof(MovingPlatform));
     if(horizontalPlatforms == NULL && MAX_HORIZONTAL_PLATFORMS > 0) {
@@ -727,8 +731,8 @@ void InitMovingPlatforms(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
             pixelColor = mapColors[x][y];
 
             // Horizontal platforms (yellow)
@@ -856,8 +860,8 @@ void InitTreasure(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -874,7 +878,7 @@ void InitTreasure(void) {
 }
 
 void UpdateTreasure(void) {
-    for (size_t i = 0; i < MAX_TREASURE; i++) {
+    for (size_t i = 0; i < treasureCount; i++) {
         if (treasure[i].visible) {
             Rectangle treasureRect = (Rectangle){ treasure[i].position.x+3, treasure[i].position.y+3, TILE_SIZE-6, TILE_SIZE-6 };
 
@@ -891,7 +895,7 @@ void UpdateTreasure(void) {
 }
 
 void DrawTreasure(void) {
-    for (size_t i = 0; i < MAX_TREASURE; i++) {
+    for (size_t i = 0; i < treasureCount; i++) {
         Rectangle treasureRect = (Rectangle){ TILE_SIZE*2, TILE_SIZE, TILE_SIZE, TILE_SIZE };
         if(IsOnScreen((Vector2){treasureRect.x, treasureRect.y}, TILE_SIZE, TILE_SIZE))
         {
@@ -923,6 +927,7 @@ void UnloadTreasure(void) {
 //**********************************************SPIKES****************************************************
 
 void InitSpikes(void) {
+    spikeCount = 0;
     spikes = (Spike*)calloc(MAX_SPIKES, sizeof(Spike));
 
     if(spikes == NULL) {
@@ -930,8 +935,8 @@ void InitSpikes(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -949,20 +954,32 @@ void InitSpikes(void) {
 }
 
 void DrawSpikes(void){
-    for (size_t i = 0; i < MAX_SPIKES; i++) {
+    for (size_t i = 0; i < spikeCount; i++) {
         if(IsOnScreen(spikes[i].position, TILE_SIZE, TILE_SIZE))
         {
             if (spikes[i].position.x != 0 && spikes[i].position.y != 0) {
                 DrawTextureRec(spikes[i].texture, spikes[i].frame, spikes[i].position, LIGHTGRAY);
                 // DrawText(TextFormat("%d", i), spikes[i].position.x, spikes[i].position.y - 16, 8, WHITE);
-                //DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
+                DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
             }
         }
     }
 }
 
 void CollisionSpikes(void) {
-    for (size_t i = 0; i < MAX_SPIKES; i++) {
+    for (size_t i = 0; i < spikeCount; i++) {
+        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, spikes[i].collider)) {
+            printf("*** HIT SPIKE #%zu at position (%f, %f) ***\n", i, spikes[i].position.x, spikes[i].position.y);
+            player.position = player.lastCheckpoint;
+            playerDeathCount += 1;
+            player.hp -= 1;
+            player.state = STATE_INVINCIBLE;
+            player.iFrameTimer = 240;
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < spikeCount; i++) {
         if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, spikes[i].collider)) {
             player.position = player.lastCheckpoint;
             playerDeathCount += 1;
@@ -975,7 +992,7 @@ void CollisionSpikes(void) {
         }
     }
 
-    // Decrement the invincibility timer if the player is in the invincible state
+    // Decrement the invincibility timer if the DrawProjectileplayer is in the invincible state
     if (player.state == STATE_INVINCIBLE) {
         player.iFrameTimer--;
         if (player.iFrameTimer <= 0) {
@@ -985,7 +1002,7 @@ void CollisionSpikes(void) {
 }
 
 int FindAvailableSpikeIndex(){
-    for (size_t i = 0; i < MAX_SPIKES; i++) {
+    for (size_t i = 0; i < spikeCount; i++) {
         if (spikes[i].position.x == 0 && spikes[i].position.y == 0)
         {
             return i; // Found an available spike slot
@@ -1005,8 +1022,8 @@ void InitRotatingPillarGroups(void) {
 
     rotatingPillarCount = 0;
 
-    for(int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for(int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for(int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for(int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1057,22 +1074,16 @@ void UpdateRotatingPillarGroups(void) {
 
 void CollisionWithRotatingPillarGroups(void) {
     for (size_t g = 0; g < rotatingPillarCount; g++) {
-        if (player.state != STATE_INVINCIBLE) { // Make sure the player isn't invincible
+        if (player.state != STATE_INVINCIBLE) {
             for (size_t i = 0; i < NUM_CIRCLES_IN_PILLAR_GROUP; i++) {
                 if (CheckCollisionCircleRec(pillarGroups[g].pillars[i].position, pillarGroups[g].pillars[i].radius, player.collider)) {
-                    // Deduct health only once, just like the spike collision
+                    printf("*** HIT ROTATING PILLAR group %zu pillar %zu at position (%f, %f) ***\n", g, i, pillarGroups[g].pillars[i].position.x, pillarGroups[g].pillars[i].position.y);
                     player.hp -= 1;
-
-                    // Handle player position and death count
                     player.position = player.lastCheckpoint;
                     playerDeathCount += 1;
-
-                    // Set invincibility frames
                     player.state = STATE_INVINCIBLE;
-                    player.iFrameTimer = 240; // Reset invincibility timer to 240 frames
-
-                    // Break after deducting health to ensure only one HP reduction per group
-                    break; // Stop checking further pillars in this group
+                    player.iFrameTimer = 240;
+                    break;
                 }
             }
         }
@@ -1108,8 +1119,9 @@ void UnloadPillars(void){
 //**********************************************PROJECTILES****************************************************
 
 void InitProjectiles(void) {
+    projectileCount = 0;
     projectiles = (Projectile*)calloc(MAX_PROJECTILES, sizeof(Projectile));
-    size_t numberOfProjectiles = 0;
+    // size_t numberOfProjectiles = 0;
 
     Vector2 projectile_direction[4] = {{80.0f, 0.0f}, {0.0f, 80.0f}, {-80.0f, 0.0f}, {0.0f, -80.0f}};
 
@@ -1118,25 +1130,25 @@ void InitProjectiles(void) {
         CloseWindow();
     }
 
-    for(int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for(int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for(int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for(int x = 0; x < TILE_MAP_WIDTH; x++) {
             pixelColor = mapColors[x][y];
 
-            if((255 == pixelColor.r && 0 == pixelColor.g && 255 == pixelColor.b) && numberOfProjectiles < MAX_PROJECTILES) {
+            if((255 == pixelColor.r && 0 == pixelColor.g && 255 == pixelColor.b) && projectileCount< MAX_PROJECTILES) {
                 // Set the starting position
-                projectiles[numberOfProjectiles].position = (Vector2){x * TILE_SIZE + (TILE_SIZE / 2.0f), y * TILE_SIZE + (TILE_SIZE / 2.0f)};
-                projectiles[numberOfProjectiles].startPos = projectiles[numberOfProjectiles].position;
-                projectiles[numberOfProjectiles].endPos = (Vector2){projectiles[numberOfProjectiles].position.x + TILE_SIZE * 4, projectiles[numberOfProjectiles].position.y}; // Example: move 4 tiles to the right
+                projectiles[projectileCount].position = (Vector2){x * TILE_SIZE + (TILE_SIZE / 2.0f), y * TILE_SIZE + (TILE_SIZE / 2.0f)};
+                projectiles[projectileCount].startPos = projectiles[projectileCount].position;
+                projectiles[projectileCount].endPos = (Vector2){projectiles[projectileCount].position.x + TILE_SIZE * 4, projectiles[projectileCount].position.y}; // Example: move 4 tiles to the right
 
-                // projectiles[numberOfProjectiles].velocity = (Vector2){80.0f, -40.0f}; // Example velocity (horizontal and vertical movement)
-                projectiles[numberOfProjectiles].velocity = projectile_direction[1]; // [GetRandomValue(0,3)]; // (Vector2){80.0f, -40.0f}; // Example velocity (horizontal and vertical movement)
-                projectiles[numberOfProjectiles].maxDistance = TILE_SIZE * 4;  // Distance to travel before reset
-                projectiles[numberOfProjectiles].radius = 5.0f;
-                projectiles[numberOfProjectiles].active = true;
-                projectiles[numberOfProjectiles].delay = GetRandomValue(1.0f, 3.0f);
-                projectiles[numberOfProjectiles].cooldown = 0.0f; // Initialize cooldown
+                // projectiles[projectileCount].velocity = (Vector2){80.0f, -40.0f}; // Example velocity (horizontal and vertical movement)
+                projectiles[projectileCount].velocity = projectile_direction[1]; // [GetRandomValue(0,3)]; // (Vector2){80.0f, -40.0f}; // Example velocity (horizontal and vertical movement)
+                projectiles[projectileCount].maxDistance = TILE_SIZE * 4;  // Distance to travel before reset
+                projectiles[projectileCount].radius = 5.0f;
+                projectiles[projectileCount].active = true;
+                projectiles[projectileCount].delay = GetRandomValue(1.0f, 3.0f);
+                projectiles[projectileCount].cooldown = 0.0f; // Initialize cooldown
 
-                numberOfProjectiles++;
+                projectileCount++;
             }
         }
     }
@@ -1157,7 +1169,7 @@ bool CheckProjectileWallCollision(Projectile *proj) {
 }
 
 void UpdateProjectile(float deltaTime) {
-    for(size_t i = 0; i < MAX_PROJECTILES; i++) {
+    for(size_t i = 0; i < projectileCount; i++) {
         if(projectiles[i].active) {
             // If there's a cooldown after resetting, we skip movement during the cooldown period
             if (projectiles[i].cooldown > 0.0f) {
@@ -1185,7 +1197,7 @@ void UpdateProjectile(float deltaTime) {
 }
 
 void DrawProjectile(void) {
-    for(size_t i = 0; i < MAX_PROJECTILES; i++) {
+    for(size_t i = 0; i < projectileCount; i++) {
         if(projectiles[i].active) {
             if(IsOnScreen(projectiles[i].startPos, TILE_SIZE, TILE_SIZE))
             {
@@ -1200,17 +1212,14 @@ void DrawProjectile(void) {
 
 void CheckProjectileCollisions(void) {
     if(player.state != STATE_INVINCIBLE) {
-        for(size_t i = 0; i < MAX_PROJECTILES; i++) {
+        for(size_t i = 0; i < projectileCount; i++) {
             if(projectiles[i].active && CheckCollisionCircleRec(projectiles[i].position, projectiles[i].radius, player.collider)) {
+                printf("*** HIT PROJECTILE #%zu at position (%f, %f) ***\n", i, projectiles[i].position.x, projectiles[i].position.y);
                 player.hp -= 1;
-
-                // Handle player position and death count
                 player.position = player.lastCheckpoint;
                 playerDeathCount += 1;
-
-                // Set invincibility frames
                 player.state = STATE_INVINCIBLE;
-                player.iFrameTimer = 240; // Reset invincibility timer to 240 frames
+                player.iFrameTimer = 240;
                 break;
             }
         }
@@ -1228,8 +1237,8 @@ void InitPlayer(void) {
 
     playerCount = 0;
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1390,7 +1399,7 @@ void DrawPlayer(void) {
             // Add cases for other animation states as needed
     }
 
-    //DrawRectangleLines(player.collider.x, player.collider.y, player.collider.width, player.collider.height, BLUE);
+    DrawRectangleLines(player.collider.x, player.collider.y, player.collider.width, player.collider.height, BLUE);
 }
 
 //**********************************************ENTITIES****************************************************
@@ -1669,6 +1678,7 @@ float ttc_clamp(float value, float min, float max) {
 //**********************************************CHECKPOINTS****************************************************
 
 void InitCheckpoints(void) {
+    checkpointCount = 0;
     checkpoints = (Checkpoint*)calloc(MAX_CHECKPOINTS, sizeof(Checkpoint));
 
     if(checkpoints == NULL) {
@@ -1680,8 +1690,8 @@ void InitCheckpoints(void) {
         checkpoints[i].frame.y = TILE_SIZE * 2;
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1699,7 +1709,7 @@ void InitCheckpoints(void) {
 }
 
 void DrawCheckPoints(void) {
-    for (size_t i = 0; i < MAX_CHECKPOINTS; i++) {
+    for (size_t i = 0; i < checkpointCount; i++) {
         if (IsOnScreen(checkpoints[i].position, TILE_SIZE, TILE_SIZE)) {
             if (checkpoints[i].position.x != 0 && checkpoints[i].position.y != 0) {
                 DrawTextureRec(checkpoints[i].texture, checkpoints[i].frame, checkpoints[i].position, WHITE);
@@ -1712,7 +1722,7 @@ void DrawCheckPoints(void) {
 }
 
 void CollisionCheckpoints(void) {
-    for(size_t i = 0; i < MAX_CHECKPOINTS; i++) {
+    for(size_t i = 0; i < checkpointCount; i++) {
         if(CheckCollisionRecs(player.collider, checkpoints[i].collider)) {
             player.lastCheckpoint = checkpoints[i].position;
             checkpoints[i].frame.y = TILE_SIZE * 3;
@@ -1787,8 +1797,8 @@ void InitHorizontalMonsters(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1826,8 +1836,8 @@ void InitVerticalMonsters(void) {
         CloseWindow();
     }
 
-    for (int y = 0; y < mapImage.height && y < TILE_MAP_HEIGHT; y++) {
-        for (int x = 0; x < mapImage.width && x < TILE_MAP_WIDTH; x++) {
+    for (int y = 0; y < TILE_MAP_HEIGHT; y++) {
+        for (int x = 0; x < TILE_MAP_WIDTH; x++) {
 
             pixelColor = mapColors[x][y];
 
@@ -1976,8 +1986,19 @@ void DrawVerticalMonsters(void) {
 }
 
 void CollisionHorizontalMonsters(void) {
+    for (size_t i = 0; i < pathIndexHorizontal; i++) {
+        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterHorizontal[i].collider)) {
+            printf("*** HIT HORIZONTAL MONSTER #%zu at position (%f, %f) ***\n", i, monsterHorizontal[i].position.x, monsterHorizontal[i].position.y);
+            player.position = player.lastCheckpoint;
+            playerDeathCount += 1;
+            player.hp -= 1;
+            player.state = STATE_INVINCIBLE;
+            player.iFrameTimer = 240;
+            break;
+        }
+    }
 
-    for (size_t i = 0; i < (MAX_HORIZONTAL_MONSTERS); i++) {
+    for (size_t i = 0; i < (pathIndexHorizontal); i++) {
         if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterHorizontal[i].collider)) {
             player.position = player.lastCheckpoint;
             playerDeathCount += 1;
@@ -1997,8 +2018,19 @@ void CollisionHorizontalMonsters(void) {
 }
 
 void CollisionVerticalMonsters(void) {
+    for (size_t i = 0; i < pathIndexVertical; i++) {
+        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterVertical[i].collider)) {
+            printf("*** HIT VERTICAL MONSTER #%zu at position (%f, %f) ***\n", i, monsterVertical[i].position.x, monsterVertical[i].position.y);
+            player.position = player.lastCheckpoint;
+            playerDeathCount += 1;
+            player.hp -= 1;
+            player.state = STATE_INVINCIBLE;
+            player.iFrameTimer = 240;
+            break;
+        }
+    }
 
-    for (size_t i = 0; i < (MAX_VERTICAL_MONSTERS); i++) {
+    for (size_t i = 0; i < (pathIndexVertical); i++) {
         if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterVertical[i].collider)) {
             player.position = player.lastCheckpoint;
             playerDeathCount += 1;
@@ -2075,7 +2107,7 @@ void LoadResources(void) {
     levelBlockout           = LoadTexture(current_level_texture[current_level]);
     // levelBlockoutBackground = LoadTexture("../out/bg_level_blockout.png");
     mapImage                = LoadImage(current_level_texture[current_level]);
-    UnloadImage(mapImage);
+    // UnloadImage(mapImage);
 }
 
 void SetGameState(void) {
@@ -2093,7 +2125,7 @@ void SetGameState(void) {
 
 void PreprocessMapColors(void) {
 
-    mapImage = LoadImage(current_level_texture[current_level]);
+    //mapImage = LoadImage(current_level_texture[current_level]);
 
     for (int y = 0; y < mapImage.height; y++) {
         for (int x = 0; x < mapImage.width; x++) {
@@ -2176,6 +2208,7 @@ void ResetGame(void) {
     UnloadProjectiles();
     UnloadMap();
 
+    LoadResources();
     SetGameState();
     InitGameComponents();
 }
