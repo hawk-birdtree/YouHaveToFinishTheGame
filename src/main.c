@@ -72,7 +72,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_7.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -106,9 +106,10 @@ bool timerActive   = false;
 bool gameOver      = false;
 bool win           = false;
 
-unsigned int frameDelay        = {0};
-unsigned int frameDelayCounter = {0};
-unsigned int frameIndex        = {0};
+unsigned int frameDelay              = {0};
+unsigned int frameDelayCounter       = {0};
+unsigned int playerFrameDelayCounter = {0};
+unsigned int frameIndex              = {0};
 
 typedef struct {
     int r, g, b;
@@ -891,13 +892,13 @@ void UpdateTreasure(void) {
         }
     }
 
-    win = (score == MAX_TREASURE);
+    win = (score == MAX_TREASURE) && (MAX_TREASURE > 0);
 }
 
 void DrawTreasure(void) {
     for (size_t i = 0; i < treasureCount; i++) {
         Rectangle treasureRect = (Rectangle){ TILE_SIZE*2, TILE_SIZE, TILE_SIZE, TILE_SIZE };
-        if(IsOnScreen((Vector2){treasureRect.x, treasureRect.y}, TILE_SIZE, TILE_SIZE))
+        if(IsOnScreen(treasure[i].position, TILE_SIZE, TILE_SIZE))
         {
             if (treasure[i].visible) {
                 DrawTextureRec(levelSpriteSheet, treasureRect, treasure[i].position, GOLD);
@@ -976,27 +977,6 @@ void CollisionSpikes(void) {
             player.state = STATE_INVINCIBLE;
             player.iFrameTimer = 240;
             break;
-        }
-    }
-
-    for (size_t i = 0; i < spikeCount; i++) {
-        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, spikes[i].collider)) {
-            player.position = player.lastCheckpoint;
-            playerDeathCount += 1;
-            player.hp -= 1;
-
-            // Set I-frames
-            player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240; // Number of frames for I-frames
-            break;
-        }
-    }
-
-    // Decrement the invincibility timer if the DrawProjectileplayer is in the invincible state
-    if (player.state == STATE_INVINCIBLE) {
-        player.iFrameTimer--;
-        if (player.iFrameTimer <= 0) {
-            player.state = STATE_NORMAL; // Reset to normal state when I-frames expire
         }
     }
 }
@@ -1334,6 +1314,13 @@ void UpdatePlayerInput(void) {
 void UpdatePlayer(void) {
     UpdatePlayerInput();
     EntityMoveUpdate(&player);
+    
+    if (player.state == STATE_INVINCIBLE) {
+        player.iFrameTimer--;
+        if (player.iFrameTimer <= 0) {
+            player.state = STATE_NORMAL;
+        }
+    }
 }
 
 void DrawPlayer(void) {
@@ -1959,7 +1946,7 @@ void DrawHorizontalMonsters(void) {
             monsterHorizontal[i].frame.height // Frame height
         };
 
-        if (IsOnScreen((Vector2){frameRect.x, frameRect.y}, TILE_SIZE, TILE_SIZE)) {
+        if (IsOnScreen(monsterHorizontal[i].position, TILE_SIZE, TILE_SIZE)) {
             // Draw the monster using the calculated frame rectangle
             DrawTextureRec(monsterHorizontal[i].texture, frameRect, monsterHorizontal[i].position, WHITE);
             // DrawText(TextFormat("%d", i), monsterHorizontal[i].position.x, monsterHorizontal[i].position.y - 16, 8, WHITE);
@@ -1977,7 +1964,7 @@ void DrawVerticalMonsters(void) {
             monsterVertical[i].frame.height // Frame height
         };
 
-        if (IsOnScreen((Vector2){frameRect.x, frameRect.y}, TILE_SIZE, TILE_SIZE)) {
+        if (IsOnScreen(monsterVertical[i].position, TILE_SIZE, TILE_SIZE)) {
             // Draw the monster using the calculated frame rectangle
             DrawTextureRec(monsterVertical[i].texture, frameRect, monsterVertical[i].position, GOLD);
             // DrawText(TextFormat("%d", i), monsterVertical[i].position.x, monsterVertical[i].position.y - 16, 8, WHITE);
@@ -1997,24 +1984,6 @@ void CollisionHorizontalMonsters(void) {
             break;
         }
     }
-
-    for (size_t i = 0; i < (pathIndexHorizontal); i++) {
-        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterHorizontal[i].collider)) {
-            player.position = player.lastCheckpoint;
-            playerDeathCount += 1;
-            player.hp -= 1;
-            player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240;
-            break;
-        }
-    }
-
-    if (player.state == STATE_INVINCIBLE) {
-        player.iFrameTimer--;
-        if (player.iFrameTimer <= 0) {
-            player.state = STATE_NORMAL;
-        }
-    }
 }
 
 void CollisionVerticalMonsters(void) {
@@ -2027,24 +1996,6 @@ void CollisionVerticalMonsters(void) {
             player.state = STATE_INVINCIBLE;
             player.iFrameTimer = 240;
             break;
-        }
-    }
-
-    for (size_t i = 0; i < (pathIndexVertical); i++) {
-        if (player.state != STATE_INVINCIBLE && CheckCollisionRecs(player.collider, monsterVertical[i].collider)) {
-            player.position = player.lastCheckpoint;
-            playerDeathCount += 1;
-            player.hp -= 1;
-            player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240;
-            break;
-        }
-    }
-
-    if (player.state == STATE_INVINCIBLE) {
-        player.iFrameTimer--;
-        if (player.iFrameTimer <= 0) {
-            player.state = STATE_NORMAL;
         }
     }
 }
