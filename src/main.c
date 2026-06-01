@@ -1,3 +1,10 @@
+/*
+    write gameplay instructions based on the current tutorial level
+    make projectiles that move horizontally and diagonally
+    make projectiles that have different shoot timing
+    make platforms that move different distances
+*/
+
 #include "raylib.h"
 #include "raymath.h"
 #include <stdlib.h>
@@ -38,8 +45,6 @@ Input input;
 #define EMPTY   -1
 #define BLOCK    0     // Start from zero, slopes can be added
 
-// #define TILE_MAP_WIDTH        100
-// #define TILE_MAP_HEIGHT        75
 #define TILE_SIZE              16
 #define TILE_ROUND             15
 
@@ -47,15 +52,15 @@ Input input;
 #define MAX_ROOMS               4
 #define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
-#define MAX_LEVEL_TEXTURES      6
+#define MAX_LEVEL_TEXTURES      10
 #define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
+#define INVINCIBILITY_TIME      60
 
 #define NUM_CIRCLES_IN_PILLAR_GROUP 4
 #define NUM_PILLAR_GROUPS           3
 
 #define NORMAL_SPEED   1.50*60 //1.5625f * 60
 #define RUNNING_SPEED  2.50*60 //3.1255f * 60
-
 
 #define SCREEN_WIDTH   1280 // 640 * 2
 #define SCREEN_HEIGHT   768 // 480 * 2
@@ -72,7 +77,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_7.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -105,11 +110,13 @@ unsigned int score = {0};
 bool timerActive   = false;
 bool gameOver      = false;
 bool win           = false;
+bool gameComplete  = false;
 
-unsigned int frameDelay              = {0};
-unsigned int frameDelayCounter       = {0};
-unsigned int playerFrameDelayCounter = {0};
-unsigned int frameIndex              = {0};
+unsigned int frameDelay                  = {0};
+unsigned int horizontalFrameDelayCounter = {0};
+unsigned int verticalFrameDelayCounter   = {0};
+unsigned int playerFrameDelayCounter     = {0};
+unsigned int frameIndex                  = {0};
 
 typedef struct {
     int r, g, b;
@@ -117,7 +124,7 @@ typedef struct {
 } ColorCount;
 
 ColorCount colorCounts[MAX_COLORS] = {0};
-int colorCountIndex = {0};\
+int colorCountIndex = {0};
 size_t projectileCount = 0;
 
 bool ColorMatches(ColorCount color, int r, int g, int b);
@@ -892,7 +899,17 @@ void UpdateTreasure(void) {
         }
     }
 
-    win = (score == MAX_TREASURE) && (MAX_TREASURE > 0);
+    if((score == MAX_TREASURE) && (MAX_TREASURE > 0))
+    {
+        if(current_level >= TOTAL_LEVELS -1)
+        {
+            gameComplete = true;
+        }
+        else
+        {
+            win = true;
+        }
+    }
 }
 
 void DrawTreasure(void) {
@@ -961,7 +978,7 @@ void DrawSpikes(void){
             if (spikes[i].position.x != 0 && spikes[i].position.y != 0) {
                 DrawTextureRec(spikes[i].texture, spikes[i].frame, spikes[i].position, LIGHTGRAY);
                 // DrawText(TextFormat("%d", i), spikes[i].position.x, spikes[i].position.y - 16, 8, WHITE);
-                DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
+                // DrawRectangleLines(spikes[i].collider.x, spikes[i].collider.y, spikes[i].collider.width, spikes[i].collider.height, GREEN);
             }
         }
     }
@@ -975,7 +992,7 @@ void CollisionSpikes(void) {
             playerDeathCount += 1;
             player.hp -= 1;
             player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240;
+            player.iFrameTimer = INVINCIBILITY_TIME;
             break;
         }
     }
@@ -1062,7 +1079,7 @@ void CollisionWithRotatingPillarGroups(void) {
                     player.position = player.lastCheckpoint;
                     playerDeathCount += 1;
                     player.state = STATE_INVINCIBLE;
-                    player.iFrameTimer = 240;
+                    player.iFrameTimer = INVINCIBILITY_TIME;
                     break;
                 }
             }
@@ -1199,7 +1216,7 @@ void CheckProjectileCollisions(void) {
                 player.position = player.lastCheckpoint;
                 playerDeathCount += 1;
                 player.state = STATE_INVINCIBLE;
-                player.iFrameTimer = 240;
+                player.iFrameTimer = INVINCIBILITY_TIME;
                 break;
             }
         }
@@ -1247,7 +1264,7 @@ void InitPlayer(void) {
     player.lastCheckpoint  = player.position;
     player.direction       = 1.0;
     player.maxSpd          = NORMAL_SPEED;
-    player.hp              = MAX_PLAYER_HP;
+    // player.hp              = MAX_PLAYER_HP;
     player.iFrameTimer     = STATE_NORMAL;
     player.state           = 0;
     player.acc             = 0.118164 * 60 * 60;
@@ -1324,10 +1341,10 @@ void UpdatePlayer(void) {
 }
 
 void DrawPlayer(void) {
-    frameDelayCounter++; // Increment the frame delay counter
+    playerFrameDelayCounter++; // Increment the frame delay counter
 
     // Check if it's time to update the frame
-    if (frameDelayCounter >= frameDelay) {
+    if (playerFrameDelayCounter >= frameDelay) {
         player_animation_frame.x += player.texture.width / 4.0f;
 
         // Check if the animation looped
@@ -1335,7 +1352,7 @@ void DrawPlayer(void) {
             player_animation_frame.x = 0;
         }
 
-        frameDelayCounter = 0; // Reset the frame delay counter
+        playerFrameDelayCounter = 0; // Reset the frame delay counter
     }
 
     // Calculate the source rectangle based on the current frame
@@ -1386,7 +1403,7 @@ void DrawPlayer(void) {
             // Add cases for other animation states as needed
     }
 
-    DrawRectangleLines(player.collider.x, player.collider.y, player.collider.width, player.collider.height, BLUE);
+    // DrawRectangleLines(player.collider.x, player.collider.y, player.collider.width, player.collider.height, BLUE);
 }
 
 //**********************************************ENTITIES****************************************************
@@ -1849,8 +1866,8 @@ void UpdateHorizontalMonsters(void) {
     CollisionHorizontalMonsters();
 
     // Update animation frames globally for horizontal monsters
-    frameDelayCounter++;
-    if (frameDelayCounter >= frameDelay) {
+    horizontalFrameDelayCounter++;
+    if (horizontalFrameDelayCounter >= frameDelay) {
         for(size_t i = 0; i < pathIndexHorizontal; i++) {
             monsterHorizontal[i].frame.x = TILE_SIZE * 3;
             monsterHorizontal[i].frame.y += TILE_SIZE;
@@ -1858,7 +1875,7 @@ void UpdateHorizontalMonsters(void) {
                 monsterHorizontal[i].frame.y = 0;
             }
         }
-        frameDelayCounter = 0;
+        horizontalFrameDelayCounter = 0;
     }
 
     for (size_t i = 0; i < pathIndexHorizontal; i++) {
@@ -1895,8 +1912,8 @@ void UpdateVerticalMonsters(void) {
     CollisionVerticalMonsters();
 
     // Update animation frames globally for vertical monsters
-    frameDelayCounter++;
-    if (frameDelayCounter >= frameDelay) {
+    verticalFrameDelayCounter++;
+    if (verticalFrameDelayCounter >= frameDelay) {
         for (size_t i = 0; i < pathIndexVertical; i++) {
             monsterVertical[i].frame.x = TILE_SIZE;
             monsterVertical[i].frame.y += TILE_SIZE;
@@ -1904,7 +1921,7 @@ void UpdateVerticalMonsters(void) {
                 monsterVertical[i].frame.y = TILE_SIZE * 2;
             }
         }
-        frameDelayCounter = 0;
+        verticalFrameDelayCounter = 0;
     }
 
     for (size_t i = 0; i < pathIndexVertical; i++) {
@@ -1980,7 +1997,7 @@ void CollisionHorizontalMonsters(void) {
             playerDeathCount += 1;
             player.hp -= 1;
             player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240;
+            player.iFrameTimer = INVINCIBILITY_TIME;
             break;
         }
     }
@@ -1994,7 +2011,7 @@ void CollisionVerticalMonsters(void) {
             playerDeathCount += 1;
             player.hp -= 1;
             player.state = STATE_INVINCIBLE;
-            player.iFrameTimer = 240;
+            player.iFrameTimer = INVINCIBILITY_TIME;
             break;
         }
     }
@@ -2062,16 +2079,19 @@ void LoadResources(void) {
 }
 
 void SetGameState(void) {
-    gameOver          = false;
-    win               = false;
-    playerDeathCount  = 0;
-    timer             = 10000;
-    timerActive       = true;
-    score             = 0;
-    player_animation_frame     = (Vector2){0, 0};
-    frameDelay        = 10;
-    frameDelayCounter = 0;
-    frameIndex        = 0;
+    gameOver                    = false;
+    win                         = false;
+    gameComplete                = false;
+    playerDeathCount            = 0;
+    timer                       = 10000;
+    timerActive                 = true;
+    score                       = 0;
+    player_animation_frame      = (Vector2){0, 0};
+    frameDelay                  = 10;
+    horizontalFrameDelayCounter = 0;
+    verticalFrameDelayCounter   = 0;
+    playerFrameDelayCounter     = 0;
+    frameIndex                  = 0;
 }
 
 void PreprocessMapColors(void) {
@@ -2146,6 +2166,7 @@ void InitGame(void) {
     SetGameState();
     LoadResources();
     InitGameComponents();
+    player.hp = MAX_PLAYER_HP;
 }
 
 void ResetGame(void) {
@@ -2158,10 +2179,15 @@ void ResetGame(void) {
     UnloadPillars();
     UnloadProjectiles();
     UnloadMap();
+    UnloadTexture(worldmap.texture);
+    UnloadTexture(player.texture);
+    UnloadTexture(levelSpriteSheet);
+    UnloadTexture(levelBlockout);
 
     LoadResources();
     SetGameState();
     InitGameComponents();
+    player.hp = MAX_PLAYER_HP;
 }
 
 void GameOver(void) {
@@ -2185,44 +2211,52 @@ void GameOver(void) {
 
 void UpdateGame(void) {
 
-    UpdatePlayer();
-    UpdateMovingPlatforms();
-    PlayerPlatformCollision();
+    if(!win && !gameOver && !gameComplete)
+    {      
+        UpdatePlayer();
+        UpdateMovingPlatforms();
+        PlayerPlatformCollision();
 
-    float deltaTime = GetFrameTime();
-    UpdateProjectile(deltaTime);
-    UpdateRotatingPillarGroups();
-    UpdateHorizontalMonsters();
-    UpdateVerticalMonsters();
-    UpdateTreasure();
-    UpdateWorldMap();
+        float deltaTime = GetFrameTime();
+        UpdateProjectile(deltaTime);
+        UpdateRotatingPillarGroups();
+        UpdateHorizontalMonsters();
+        UpdateVerticalMonsters();
+        UpdateTreasure();
+        UpdateWorldMap();
 
-    CollisionCheckpoints();
-    CollisionSpikes();
-    CollisionWithRotatingPillarGroups();
-    CheckProjectileCollisions();
+        CollisionCheckpoints();
+        CollisionSpikes();
+        CollisionWithRotatingPillarGroups();
+        CheckProjectileCollisions();
 
-    CameraUpdate();
-
+        CameraUpdate();
+    }
+    
     if(player.hp <= 0 || timer <= 0) {
         GameOver();
     }
 
     if (win) {
-        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
-            if(current_level >= TOTAL_LEVELS){
-                current_level = -1;
-                // ResetGame();
-            }
-            else {
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) { 
+            {
                 win = false; //reset win before loading next level
                 LoadNextLevel();
                 // score = 0;
                 // treasureCount = 0;
             }
+        }        
+    }   
+        
+    if(gameComplete)
+    {
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))  
+        {
+            current_level = 0;
+            ResetGame();
         }
     }
-
+    
     if (timerActive) {
         timer--;
 
@@ -2250,6 +2284,8 @@ void LoadNextLevel(void){
 
     UnloadTexture(levelSpriteSheet);
     UnloadTexture(levelBlockout);
+    UnloadTexture(worldmap.texture);
+    UnloadTexture(player.texture);
     // UnloadTexture(levelBlockoutBackground);
     UnloadMap();
 
@@ -2318,8 +2354,8 @@ void DrawGame(void) {
         player.velocity = (Vector2){0.0f,0.0f};
 
         Color tint = (Color){9,10,59,255};
-        DrawRectangleRec(background_rect, tint);
-        DrawText("NEXT LEVEL?", GetScreenWidth()/2.7f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 50, 60, RED);
+        DrawRectangleRounded(background_rect, 0.1f, 3, tint);
+        DrawText("NEXT LEVEL?", GetScreenWidth()/2.7f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 30, 60, RED);
         DrawText("PRESS [R] or (Y/Triangle) TO CONTINUE", GetScreenWidth()/2.1f - MeasureText("PRESS [R] or (Y/Triangle) TO CONTINUE", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
 
         if(playerDeathCount) {
@@ -2327,6 +2363,20 @@ void DrawGame(void) {
         } else {
             DrawText(TextFormat("**NO DEATH, RUN**", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("!PERFECT, RUN!", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, GREEN);
         }
+    }
+    
+    if(gameComplete)
+    {
+        Color tint = (Color){9,10,59,255};
+        DrawRectangleRounded((Rectangle){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT}, 0.1f, 3, tint);
+        DrawText("YOU FINISHED THE TUTORIAL!", GetScreenWidth()/3.7f - MeasureText("YOU FINISHED THE TUTORIAL!", 20)/2.0f, GetScreenHeight()/3.0f - 30, 60, RED);
+        DrawText("PRESS [R] or [ESC] TO QUIT", GetScreenWidth()/2.0f - MeasureText("PRESS [R] or [ESC] TO QUIT", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
+        
+        if(playerDeathCount) {
+            DrawText(TextFormat("Deaths: %d", playerDeathCount), GetScreenWidth()/2.2f - MeasureText("Deaths:  ", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, DARKGREEN);
+        } else {
+            DrawText(TextFormat("**NO DEATH, RUN**", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("!PERFECT, RUN!", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, GREEN);
+        }        
     }
 
     EndDrawing();
@@ -2347,6 +2397,7 @@ void UnloadGame(void) {
 
     UnloadTexture(levelSpriteSheet);
     UnloadTexture(levelBlockout);
+    UnloadTexture(worldmap.texture);
     // UnloadTexture(levelBlockoutBackground);
     UnloadTexture(player.texture);
     UnloadMap();
