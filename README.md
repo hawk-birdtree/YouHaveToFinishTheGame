@@ -7,7 +7,7 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
 ## How to Build
  
 1. Make sure you have Raylib installed.
-2. Run 'build.sh' in the terminal.
+2. Run 'build.sh' in the Linux terminal or compile in Notepad++ using F6 (raylib-compile-execute).
 3. Run the executable in the 'out/' folder.
  
 ## Controls
@@ -22,7 +22,7 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
 - Basic enemy AI.
 - Collectible Coins.
 - Projectiles and Obstacles.
-- Rotating pillars of damage
+- Rotating pillars of damage.
 - Checkpoints.
 - Sound Effects.
 - Player can make levels that are of multiples of 40x24 pixels in size and save them as a .png.
@@ -44,7 +44,7 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
     * rgb ( 80,  80,  80) wall tile 4.
     * rgb (255, 255, 255) wall tile 5.
 
-## TODO
+## TO DO
 
 - Add tutorial text to tutorial levels.
 - Add music.
