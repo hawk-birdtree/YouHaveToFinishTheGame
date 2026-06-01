@@ -22,10 +22,11 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
 - Basic enemy AI.
 - Collectible Coins.
 - Projectiles and Obstacles.
+- Rotating pillars of damage
 - Checkpoints.
 - Sound Effects.
 - Player can make levels that are of multiples of 40x24 pixels in size and save them as a .png.
-- Player can make levels using MSPaint to manipulate the colors in the .png files in the 'out/' folder.
+- Player can make levels using MSPaint using the colors in the .png files in the 'out/' folder.
 
     * rgb (  0,   0, 255) the player tile.
     * rgb (  0,   0,   0) empty space.
@@ -45,15 +46,18 @@ not to do when programming; it's all here as a time capsule of game dev mistakes
 
 ## TODO
 
+- Add tutorial text to tutorial levels.
 - Add music.
+- Add more sound effects.
 - Add more stages.
-- Every stage should have its own time.
-- Add variable jump height.
-- Make enemies and projectiles collide with walls instead of passing through them.
 - Add Leader Board.
-- More or Better animations and graphics.
-- Separate the game objects into their own modules instead of having a single main file doing everything.
-- Add a start screen and end game screen.
+- Add a Start screen.
+- Add an End game screen.
+- Add projectiles that move in different cardinal directions.
+- Add moving platforms that move different distances and speeds.
+- Make projetiles and Rotating pillars with different speeds and timings.
+- Every stage should have its own time.
+- More/better animations and graphics.
     
 ## Known Issues
 
