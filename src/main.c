@@ -52,9 +52,9 @@ Input input;
 #define MAX_ROOMS               4
 #define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
-#define MAX_LEVEL_TEXTURES      10
-#define TOTAL_LEVELS            MAX_LEVEL_TEXTURES
-#define INVINCIBILITY_TIME      60
+#define MAX_LEVEL_TEXTURES     12
+#define TOTAL_LEVELS           MAX_LEVEL_TEXTURES
+#define INVINCIBILITY_TIME     60
 
 #define NUM_CIRCLES_IN_PILLAR_GROUP 4
 #define NUM_PILLAR_GROUPS           3
@@ -77,7 +77,7 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png", "../out/level_11.png", "../out/level_12.png"};
 
 typedef enum {
     STATE_NORMAL,
@@ -423,6 +423,7 @@ void GameOver(void);
 void ResetGame(void);
 void UpdateGame(void);
 void LoadNextLevel(void);
+void DrawTutorialMessages(void);
 void DrawGame(void);
 void UnloadGame(void);
 
@@ -2294,6 +2295,88 @@ void LoadNextLevel(void){
     InitGameComponents();
 }
 
+void DrawTutorialMessages(void)
+{
+    const char* tutorial_message[11] =
+    {
+        "\t\t\t\t Press A or D on the keyboard \n or Left and Right on the Joystick's D pad",
+        "\t\t\tPress Up or Space, or A or X on \n\t\t\t\t\t\t\t the Joystick to jump",
+        "  Hold down the jump button to jump higher",
+        "\t\t\t\t\t\t\t Flags are checkpoints",
+        "\t\t  Collect all coins to exit the stage",
+        "\t\t\t\t\tDying sends you to the last \n\t\t\t\t\t\t checkpoint you touched",
+        "\t\t\t  Hold Shift, Square, or X to run",
+        "The center of the rotating pillars do no damage"
+        "",
+        "\t\t\t\t\t\t\t\t\t Do a small jump",
+        " Do a tiny hop by letting go of jump right away",
+    };
+    
+    Rectangle tutorial_rect = (Rectangle){GetScreenWidth()/20.0f, GetScreenHeight()/20.5f, TILE_SIZE * 32, TILE_SIZE * 4};
+    Color tint = (Color){9,10,59,255};
+    
+    switch(current_level)
+    {
+        case 0:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[0], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/15.0f, 20, WHITE);
+        break;
+        
+        case 1:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[1], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/15.0f, 20, WHITE);
+        break;
+        
+        case 2:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[2], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+        
+        case 3:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[3], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+        
+        case 4:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[4], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/15.0f, 20, WHITE);
+        break;
+        
+        case 5:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[5], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/15.0f, 20, WHITE);
+        break;
+        
+        case 6:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[6], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;      
+        
+        case 8:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[7], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+
+        case 10:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[8], GetScreenWidth()/4.0f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+        
+        case 11:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[9], GetScreenWidth()/4.3f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+        
+        case 12:
+            DrawRectangleRounded(tutorial_rect, 0.1f, 3, tint);
+            DrawText(tutorial_message[10], GetScreenWidth()/4.4f - MeasureText(tutorial_message[0], 20)/2.0f, GetScreenHeight()/12.5f, 20, WHITE);
+        break;
+        
+        default:
+        break;
+    }
+}
+
 void DrawGame(void) {
     BeginDrawing();
 
@@ -2302,6 +2385,7 @@ void DrawGame(void) {
     ClearBackground(BLACK);
 
     DrawMap();
+    DrawMovingPlatforms();
     DrawRotatingPillarGroups();
     DrawProjectile();
     DrawTreasure();
@@ -2309,7 +2393,7 @@ void DrawGame(void) {
     DrawCheckPoints();
     DrawHorizontalMonsters();
     DrawVerticalMonsters();
-    DrawMovingPlatforms();
+    DrawTutorialMessages();
     DrawPlayer();
 
     EndMode2D();
@@ -2353,7 +2437,7 @@ void DrawGame(void) {
     if (win) {
         player.velocity = (Vector2){0.0f,0.0f};
 
-        Color tint = (Color){9,10,59,255};
+        Color tint = (Color){20,20,90,255};
         DrawRectangleRounded(background_rect, 0.1f, 3, tint);
         DrawText("NEXT LEVEL?", GetScreenWidth()/2.7f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 30, 60, RED);
         DrawText("PRESS [R] or (Y/Triangle) TO CONTINUE", GetScreenWidth()/2.1f - MeasureText("PRESS [R] or (Y/Triangle) TO CONTINUE", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
