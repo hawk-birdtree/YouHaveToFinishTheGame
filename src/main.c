@@ -440,7 +440,6 @@ void InitGame(void);
 
 void SetGameState(void);
 void PreprocessMapColors(void);
-void GameOver(void);
 void ResetGame(void);
 
 void LoadNextLevel(void);
@@ -2333,26 +2332,6 @@ void ResetGame(void) {
     game_state = GAMEPLAY;
 }
 
-void GameOver(void) {
-    // gameOver        = true;
-    game_state = GAME_OVER;
-    player.velocity = (Vector2){0.0f, 0.0f};
-    player.position = (Vector2){TILE_SIZE * -5, TILE_SIZE * -5}; /*(Vector2){player.position.x/TILE_SIZE, player.position.y/TILE_SIZE};*/
-    Color tint      = {0,0,0,180};
-    DrawRectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, tint);
-
-    if(timer == 0) {
-        DrawText("TIME'S UP!", SCREEN_WIDTH/4, SCREEN_HEIGHT/2.5, 80, RED);
-    }
-    else {
-        DrawText("GAME 0VER!", SCREEN_WIDTH/4, SCREEN_HEIGHT/3, 80, RED);
-        DrawText(TextFormat("Time: %d", timer/10), SCREEN_WIDTH/3, SCREEN_HEIGHT/1.5, 50, BLUE);
-    }
-
-    DrawText(TextFormat("Deaths: %d", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("Deaths:  ", 20)/2.0f, GetScreenHeight()/1.1f - 50, 30, DARKGREEN);
-    DrawText("Press ESC, or Triangle/Y button or R key", SCREEN_WIDTH/4.0f, SCREEN_HEIGHT/1.75f, 20, WHITE);
-}
-
 void UpdateGame(void) {
 
     if(game_state == GAMEPLAY /*!win && !gameOver && !gameComplete*/)
@@ -2377,16 +2356,19 @@ void UpdateGame(void) {
         CameraUpdate();
         
         if(player.hp <= 0 || timer <= 0) {
-            GameOver();
+            game_state = GAME_OVER;
         }
     }      
     
-    if (timerActive) {
-        timer--;
-
-        if(timer <= 0 || game_state == STAGE_COMPLETE || player.hp <= 0) {
-            timerActive = false;
-            timer = timer;
+    if(game_state == GAMEPLAY)
+    {
+        if (timerActive) {
+            timer--;
+    
+            if(timer <= 0 || game_state == STAGE_COMPLETE || player.hp <= 0) {
+                timerActive = false;
+                // timer = timer;
+            }
         }
     }
 }
@@ -2529,10 +2511,22 @@ void DrawGame(void) {
         DrawText("YOU DIED!", SCREEN_WIDTH/3.0f, SCREEN_HEIGHT/3, 80, RED);
         DrawText("PRESS [R] or (Y/Triangle) TO CONTINUE", GetScreenWidth()/2.1f - MeasureText("PRESS [R] or (Y/Triangle) TO CONTINUE", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
         
-        if(IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) 
-        {
-            ResetGame();
+        player.velocity = (Vector2){0.0f, 0.0f};
+        player.position = (Vector2){TILE_SIZE * -5, TILE_SIZE * -5}; /*(Vector2){player.position.x/TILE_SIZE, player.position.y/TILE_SIZE};*/
+        Color tint      = {0,0,0,180};
+        DrawRectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, tint);
+
+        if(timer == 0) {
+            DrawText("TIME'S UP!", SCREEN_WIDTH/4, SCREEN_HEIGHT/2.5, 80, RED);
         }
+        else {
+            DrawText("GAME 0VER!", SCREEN_WIDTH/4, SCREEN_HEIGHT/3, 80, RED);
+            DrawText(TextFormat("Time: %d", timer/10), SCREEN_WIDTH/3, SCREEN_HEIGHT/1.5, 50, BLUE);
+        }
+
+        DrawText(TextFormat("Deaths: %d", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("Deaths:  ", 20)/2.0f, GetScreenHeight()/1.1f - 50, 30, DARKGREEN);
+        DrawText("Press ESC, or Triangle/Y button or R key", SCREEN_WIDTH/4.0f, SCREEN_HEIGHT/1.75f, 20, WHITE);
+
     }
 
     DrawRectangle(SCREEN_WIDTH/2.2, 8, 160, 32, BLACK );
