@@ -1,8 +1,14 @@
 /*
-    write gameplay instructions based on the current tutorial level
+    DONE: write gameplay instructions based on the current tutorial level
+    make a main menu
     make projectiles that move horizontally and diagonally
     make projectiles that have different shoot timing
     make platforms that move different distances
+    
+    
+    to run on web build compile in raylib: raylib_compile_execute_platformer
+    while in the src folder run this in the terminal: py -3.11 -m http.server
+    then paste this website in the browser: http://localhost:8000/main.html
 */
 
 #include "raylib.h"
@@ -425,6 +431,7 @@ void UpdateGame(void);
 void LoadNextLevel(void);
 void DrawTutorialMessages(void);
 void DrawGame(void);
+void UpdateDrawFrame(void);
 void UnloadGame(void);
 
 //****************************************MAIN************************************************
@@ -442,8 +449,7 @@ int main(void)
 
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
-        UpdateGame();
-        DrawGame();
+        UpdateDrawFrame();
     }
 
     #endif
@@ -455,6 +461,12 @@ int main(void)
 }
 
 //******************************************************************************************
+
+void UpdateDrawFrame(void)
+{
+    UpdateGame();
+    DrawGame();
+}
 
 void ResetVariables(void) {
     playerCount             = 0;
@@ -1391,7 +1403,7 @@ void DrawPlayer(void) {
 
         case ANIM_WALKING:
             // Render the walking animation frames
-            playerFrameRect.y = player.texture.height / 4.0f - player.texture.height;
+            playerFrameRect.y = player.texture.height / 4.0f;
             DrawTextureRec(player.texture, playerFrameRect, position, tint);
             break;
 
