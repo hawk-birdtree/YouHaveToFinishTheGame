@@ -85,6 +85,17 @@ size_t MAX_SPIKES              = 0;
 
 char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png", "../out/level_11.png", "../out/level_12.png"};
 
+typedef enum{
+    MENU,
+    TUTORIAL,
+    GAMEPLAY,
+    STAGE_COMPLETE,
+    GAME_OVER,
+    GAME_COMPLETE
+}GameState;
+
+GameState game_state = MENU;
+
 typedef enum {
     STATE_NORMAL,
     STATE_INVINCIBLE,
@@ -114,9 +125,12 @@ int timer          = {0};
 int timerDuration  = {0};
 unsigned int score = {0};
 bool timerActive   = false;
-bool gameOver      = false;
-bool win           = false;
-bool gameComplete  = false;
+
+const char* menu_option[3] = {"tutorial", "option", "quit"}; 
+int menu_selected_option = 0;
+// bool gameOver      = false;
+// bool win           = false;
+// bool gameComplete  = false;
 
 unsigned int frameDelay                  = {0};
 unsigned int horizontalFrameDelayCounter = {0};
@@ -420,19 +434,26 @@ bool CheckVerticalMonsterWallCollision(Monster* monster, int direction);
 
 //***************************************GAME**********************************************
 
-void LoadResources(void);
-void SetGameState(void);
-void PreprocessMapColors(void);
+void InitGameplay(void);
 void InitGameComponents(void);
 void InitGame(void);
+
+void SetGameState(void);
+void PreprocessMapColors(void);
 void GameOver(void);
 void ResetGame(void);
-void UpdateGame(void);
+
 void LoadNextLevel(void);
-void DrawTutorialMessages(void);
-void DrawGame(void);
+void LoadResources(void);
+
+void UpdateGame(void);
+void UpdateMenu(void);
 void UpdateDrawFrame(void);
 void UnloadGame(void);
+
+void DrawTutorialMessages(void);
+void DrawGame(void);
+void DrawMenu(void);
 
 //****************************************MAIN************************************************
 
@@ -464,8 +485,44 @@ int main(void)
 
 void UpdateDrawFrame(void)
 {
-    UpdateGame();
-    DrawGame();
+    if(game_state == MENU)
+    {
+        UpdateMenu();
+        DrawMenu();
+    }
+    else if (game_state == STAGE_COMPLETE)
+    {
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) 
+        { 
+            LoadNextLevel();
+            return;
+        } 
+        DrawGame();
+    }
+    else if (game_state == GAMEPLAY)
+    {        
+        UpdateGame();
+        DrawGame();
+    }
+    else if(game_state == GAME_COMPLETE /*gameComplete*/)
+    {
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))  
+        {
+            current_level = 0;
+            ResetGame();
+        }
+        DrawGame();
+        return;
+    }
+    else if (game_state == GAME_OVER)
+    {
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) 
+        { 
+            ResetGame();
+            return;
+        } 
+        DrawGame();
+    }
 }
 
 void ResetVariables(void) {
@@ -478,8 +535,8 @@ void ResetVariables(void) {
     timerDuration    		= 0;
     timerActive 	 		= false;
 
-    gameOver         		= false;
-    win              		= false;
+    // gameOver         		= false;
+    // win              		= false;
     score            		= 0;
 
     spikeCount              = 0;
@@ -916,11 +973,13 @@ void UpdateTreasure(void) {
     {
         if(current_level >= TOTAL_LEVELS -1)
         {
-            gameComplete = true;
+            // gameComplete = true;
+            game_state = GAME_COMPLETE;
         }
         else
         {
-            win = true;
+            // win = true;
+            game_state = STAGE_COMPLETE;
         }
     }
 }
@@ -2092,9 +2151,9 @@ void LoadResources(void) {
 }
 
 void SetGameState(void) {
-    gameOver                    = false;
-    win                         = false;
-    gameComplete                = false;
+    // gameOver                    = false;
+    // win                         = false;
+    // gameComplete                = false;
     playerDeathCount            = 0;
     timer                       = 10000;
     timerActive                 = true;
@@ -2169,6 +2228,80 @@ void InitGameComponents(void) {
     GetStageMapColors();
 }
 
+void InitGameplay(void)
+{
+    SetGameState();
+    LoadResources();
+    InitGameComponents();
+    player.hp = MAX_PLAYER_HP;
+    menu_selected_option = 0;
+}
+
+void UpdateMenu(void)
+{
+    if(IsKeyPressed(KEY_DOWN)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN))
+    {
+        menu_selected_option++;
+        
+        if(menu_selected_option > 2)
+        {
+            menu_selected_option = 0;
+        }
+        else if(menu_selected_option < 0)
+        {
+            menu_selected_option = 2;
+        }
+    }
+    else if(IsKeyPressed(KEY_UP)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP))
+    {
+        menu_selected_option--;
+        
+        if(menu_selected_option > 2)
+        {
+            menu_selected_option = 0;
+        }
+        else if(menu_selected_option < 0)
+        {
+            menu_selected_option = 2;
+        }
+    }
+    
+    if(menu_selected_option == 0 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
+    {           
+        // game_state = TUTORIAL;                   
+    }
+    else if(menu_selected_option == 1 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
+    {           
+        InitGameplay();
+        game_state = GAMEPLAY;
+    }
+    else if(menu_selected_option == 2 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
+    {           
+        // QUIT GAME                   
+    }
+}
+
+void DrawMenu(void)
+{
+    BeginDrawing();
+    
+    DrawRectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+    DrawText("Platformer", 100, 100, 30, WHITE);
+    
+    for(int i = 0; i < 3; i++)
+    {   
+        DrawRectangle(90, 190 + (i * 20), MeasureText(menu_option[i], 20), 16, DARKBLUE);
+        DrawText(menu_option[i], 100, 195 + (i * 20), 10, GRAY);
+        
+        if(i == menu_selected_option)
+        {
+            DrawText(menu_option[i], 100, 195 + (i * 20), 10, WHITE);
+        }
+    }
+    
+    EndDrawing();
+}
+
 void InitGame(void) {
 
     SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -2176,10 +2309,6 @@ void InitGame(void) {
 
     InitAudioDevice();
     HideCursor();
-    SetGameState();
-    LoadResources();
-    InitGameComponents();
-    player.hp = MAX_PLAYER_HP;
 }
 
 void ResetGame(void) {
@@ -2201,10 +2330,12 @@ void ResetGame(void) {
     SetGameState();
     InitGameComponents();
     player.hp = MAX_PLAYER_HP;
+    game_state = GAMEPLAY;
 }
 
 void GameOver(void) {
-    gameOver        = true;
+    // gameOver        = true;
+    game_state = GAME_OVER;
     player.velocity = (Vector2){0.0f, 0.0f};
     player.position = (Vector2){TILE_SIZE * -5, TILE_SIZE * -5}; /*(Vector2){player.position.x/TILE_SIZE, player.position.y/TILE_SIZE};*/
     Color tint      = {0,0,0,180};
@@ -2224,7 +2355,7 @@ void GameOver(void) {
 
 void UpdateGame(void) {
 
-    if(!win && !gameOver && !gameComplete)
+    if(game_state == GAMEPLAY /*!win && !gameOver && !gameComplete*/)
     {      
         UpdatePlayer();
         UpdateMovingPlatforms();
@@ -2244,36 +2375,16 @@ void UpdateGame(void) {
         CheckProjectileCollisions();
 
         CameraUpdate();
-    }
-    
-    if(player.hp <= 0 || timer <= 0) {
-        GameOver();
-    }
-
-    if (win) {
-        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) { 
-            {
-                win = false; //reset win before loading next level
-                LoadNextLevel();
-                // score = 0;
-                // treasureCount = 0;
-            }
-        }        
-    }   
         
-    if(gameComplete)
-    {
-        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))  
-        {
-            current_level = 0;
-            ResetGame();
+        if(player.hp <= 0 || timer <= 0) {
+            GameOver();
         }
-    }
+    }      
     
     if (timerActive) {
         timer--;
 
-        if(timer <= 0 || true == win || player.hp <= 0) {
+        if(timer <= 0 || game_state == STAGE_COMPLETE || player.hp <= 0) {
             timerActive = false;
             timer = timer;
         }
@@ -2305,6 +2416,7 @@ void LoadNextLevel(void){
     LoadResources();
     SetGameState();
     InitGameComponents();
+    game_state = GAMEPLAY;
 }
 
 void DrawTutorialMessages(void)
@@ -2410,13 +2522,16 @@ void DrawGame(void) {
 
     EndMode2D();
 
-    if ((!timerActive && false == win) || player.hp <= 0) {
-        if(gameOver) {
-            GameOver();
-
-            if(IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) {
-                ResetGame();
-            }
+    if(game_state == GAME_OVER) 
+    {
+        Rectangle rect =  (Rectangle){GetScreenWidth()/2.9f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 60, TILE_SIZE * 32, TILE_SIZE * 16};
+        DrawRectangleRec(rect, DARKBLUE);
+        DrawText("YOU DIED!", SCREEN_WIDTH/3.0f, SCREEN_HEIGHT/3, 80, RED);
+        DrawText("PRESS [R] or (Y/Triangle) TO CONTINUE", GetScreenWidth()/2.1f - MeasureText("PRESS [R] or (Y/Triangle) TO CONTINUE", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
+        
+        if(IsKeyPressed(KEY_R) || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) 
+        {
+            ResetGame();
         }
     }
 
@@ -2446,7 +2561,7 @@ void DrawGame(void) {
 
     Rectangle background_rect = (Rectangle){GetScreenWidth()/2.9f - MeasureText("NEXT LEVEL?", 20)/2.0f, GetScreenHeight()/3.0f - 60, TILE_SIZE * 32, TILE_SIZE * 16};
 
-    if (win) {
+    if (game_state == STAGE_COMPLETE) {
         player.velocity = (Vector2){0.0f,0.0f};
 
         Color tint = (Color){20,20,90,255};
@@ -2461,7 +2576,7 @@ void DrawGame(void) {
         }
     }
     
-    if(gameComplete)
+    if(game_state == GAME_COMPLETE/*gameComplete*/)
     {
         Color tint = (Color){9,10,59,255};
         DrawRectangleRounded((Rectangle){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT}, 0.1f, 3, tint);
