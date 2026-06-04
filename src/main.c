@@ -1,12 +1,12 @@
 /*
     DONE: write gameplay instructions based on the current tutorial level
-    make a main menu
+    DONE: make a main menu
     make projectiles that move horizontally and diagonally
     make projectiles that have different shoot timing
     make platforms that move different distances
     
-    
-    to run on web build compile in raylib: raylib_compile_execute_platformer
+                               ** FOR WEB BUILD **
+    To run on web build compile in raylib: raylib_compile_execute_platformer
     while in the src folder run this in the terminal: py -3.11 -m http.server
     then paste this website in the browser: http://localhost:8000/main.html
 */
@@ -17,6 +17,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 
 //***********************************CONTROLLERS********************************************
 
@@ -58,8 +59,9 @@ Input input;
 #define MAX_ROOMS               4
 #define MAX_COLORS             14 // change this number when you add or remove a color
 #define MAX_PLAYER_HP           3
-#define MAX_LEVEL_TEXTURES     12
+#define MAX_LEVEL_TEXTURES     15
 #define TOTAL_LEVELS           MAX_LEVEL_TEXTURES
+#define TOTAL_TUTORIAL_LEVELS  12
 #define INVINCIBILITY_TIME     60
 
 #define NUM_CIRCLES_IN_PILLAR_GROUP 4
@@ -70,6 +72,7 @@ Input input;
 
 #define SCREEN_WIDTH   1280 // 640 * 2
 #define SCREEN_HEIGHT   768 // 480 * 2
+
 
 int TILE_MAP_WIDTH = 0;
 int TILE_MAP_HEIGHT = 0;
@@ -83,11 +86,15 @@ size_t MAX_TREASURE            = 0;
 size_t MAX_CHECKPOINTS         = 0;
 size_t MAX_SPIKES              = 0;
 
-char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png", "../out/level_11.png", "../out/level_12.png"};
+char* current_level_texture[MAX_LEVEL_TEXTURES] = {"../out/level_1.png", "../out/level_2.png", "../out/level_3.png", "../out/level_4.png", "../out/level_5.png", "../out/level_6.png", "../out/level_7.png", "../out/level_8.png", "../out/level_9.png", "../out/level_10.png", "../out/level_11.png", "../out/level_12.png", "../out/level_13.png", "../out/level_14.png", "../out/level_15.png"};
+
+static_assert(TOTAL_TUTORIAL_LEVELS < TOTAL_LEVELS, "TOTAL_TUTORIAL_LEVELS must be less than TOTAL_LEVELS");
+static_assert(sizeof(current_level_texture) / sizeof(current_level_texture[0]) == MAX_LEVEL_TEXTURES, "current_level_texture array size must match MAX_LEVEL_TEXTURES");
 
 typedef enum{
     MENU,
     TUTORIAL,
+    TUTORIAL_COMPLETE,
     GAMEPLAY,
     STAGE_COMPLETE,
     GAME_OVER,
@@ -95,6 +102,7 @@ typedef enum{
 }GameState;
 
 GameState game_state = MENU;
+GameState previous_game_state = MENU;
 
 typedef enum {
     STATE_NORMAL,
@@ -126,7 +134,8 @@ int timerDuration  = {0};
 unsigned int score = {0};
 bool timerActive   = false;
 
-const char* menu_option[3] = {"tutorial", "option", "quit"}; 
+bool exit_game = false;
+const char* menu_option[3] = {"HOW TO PLAY", "PLAY GAME", "QUIT"}; 
 int menu_selected_option = 0;
 // bool gameOver      = false;
 // bool win           = false;
@@ -467,7 +476,7 @@ int main(void)
     #else
     SetTargetFPS(FPS);
 
-    while (!WindowShouldClose())    // Detect window close button or ESC key
+    while (!WindowShouldClose() && !exit_game)    // Detect window close button or ESC key
     {
         UpdateDrawFrame();
     }
@@ -498,16 +507,30 @@ void UpdateDrawFrame(void)
         } 
         DrawGame();
     }
+    else if (game_state == TUTORIAL)
+    {        
+        UpdateGame();
+        DrawGame();
+    }
+    else if (game_state == TUTORIAL_COMPLETE)
+    {        
+        if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP)) 
+        { 
+            game_state = MENU;
+            return;
+        }
+        DrawGame();
+    }
     else if (game_state == GAMEPLAY)
     {        
         UpdateGame();
         DrawGame();
     }
-    else if(game_state == GAME_COMPLETE /*gameComplete*/)
+    else if(game_state == GAME_COMPLETE)
     {
         if (IsKeyPressed(KEY_R) || IsGamepadButtonDown(0, GAMEPAD_BUTTON_RIGHT_FACE_UP))  
         {
-            current_level = 0;
+            current_level = TOTAL_TUTORIAL_LEVELS;
             ResetGame();
         }
         DrawGame();
@@ -970,14 +993,17 @@ void UpdateTreasure(void) {
 
     if((score == MAX_TREASURE) && (MAX_TREASURE > 0))
     {
-        if(current_level >= TOTAL_LEVELS -1)
+        if(game_state == TUTORIAL && current_level >= TOTAL_TUTORIAL_LEVELS - 1)
         {
-            // gameComplete = true;
+            game_state = TUTORIAL_COMPLETE;
+        }
+        else if (game_state == GAMEPLAY && current_level >= TOTAL_LEVELS - 1)
+        {
             game_state = GAME_COMPLETE;
         }
         else
         {
-            // win = true;
+            previous_game_state = game_state;
             game_state = STAGE_COMPLETE;
         }
     }
@@ -1848,7 +1874,7 @@ void InitSounds(void) {
     soundCoin = LoadSound("../out/pickup_coin.wav");
     soundJump = LoadSound("../out/jump_1.wav");
     soundFall = LoadSound("../out/fall_2.wav");
-    SetSoundVolume(soundCoin, 0.1f);
+    SetSoundVolume(soundCoin, 0.05f); //wow, it can go even lower than 0.1!
     SetSoundVolume(soundJump, 0.1f);
     SetSoundVolume(soundFall, 0.2f);
 }
@@ -2266,17 +2292,20 @@ void UpdateMenu(void)
     }
     
     if(menu_selected_option == 0 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
-    {           
-        // game_state = TUTORIAL;                   
+    {      
+        current_level = 0;
+        InitGameplay();
+        game_state = TUTORIAL;                   
     }
     else if(menu_selected_option == 1 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
     {           
+        current_level = TOTAL_TUTORIAL_LEVELS;
         InitGameplay();
         game_state = GAMEPLAY;
     }
     else if(menu_selected_option == 2 && (IsKeyPressed(KEY_ENTER)  || IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
     {           
-        // QUIT GAME                   
+        exit_game = true;                
     }
 }
 
@@ -2334,7 +2363,7 @@ void ResetGame(void) {
 
 void UpdateGame(void) {
 
-    if(game_state == GAMEPLAY /*!win && !gameOver && !gameComplete*/)
+    if(game_state == TUTORIAL || game_state == GAMEPLAY)
     {      
         UpdatePlayer();
         UpdateMovingPlatforms();
@@ -2360,14 +2389,13 @@ void UpdateGame(void) {
         }
     }      
     
-    if(game_state == GAMEPLAY)
+    if(game_state == TUTORIAL || game_state == GAMEPLAY)
     {
         if (timerActive) {
             timer--;
     
             if(timer <= 0 || game_state == STAGE_COMPLETE || player.hp <= 0) {
                 timerActive = false;
-                // timer = timer;
             }
         }
     }
@@ -2380,6 +2408,7 @@ void LoadNextLevel(void){
         current_level = 0; //show end screen
     }
 
+    
     UnloadTreasure();
     UnloadSpikes();
     UnloadCheckpoints();
@@ -2398,7 +2427,7 @@ void LoadNextLevel(void){
     LoadResources();
     SetGameState();
     InitGameComponents();
-    game_state = GAMEPLAY;
+    game_state = previous_game_state;
 }
 
 void DrawTutorialMessages(void)
@@ -2499,7 +2528,12 @@ void DrawGame(void) {
     DrawCheckPoints();
     DrawHorizontalMonsters();
     DrawVerticalMonsters();
-    DrawTutorialMessages();
+    
+    if(game_state == TUTORIAL)
+    {        
+        DrawTutorialMessages();
+    }
+    
     DrawPlayer();
 
     EndMode2D();
@@ -2570,11 +2604,25 @@ void DrawGame(void) {
         }
     }
     
-    if(game_state == GAME_COMPLETE/*gameComplete*/)
+    if(game_state == TUTORIAL_COMPLETE)
     {
         Color tint = (Color){9,10,59,255};
         DrawRectangleRounded((Rectangle){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT}, 0.1f, 3, tint);
         DrawText("YOU FINISHED THE TUTORIAL!", GetScreenWidth()/3.7f - MeasureText("YOU FINISHED THE TUTORIAL!", 20)/2.0f, GetScreenHeight()/3.0f - 30, 60, RED);
+        DrawText("PRESS [R] or [ESC] TO QUIT", GetScreenWidth()/2.0f - MeasureText("PRESS [R] or [ESC] TO QUIT", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
+        
+        if(playerDeathCount) {
+            DrawText(TextFormat("Deaths: %d", playerDeathCount), GetScreenWidth()/2.2f - MeasureText("Deaths:  ", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, DARKGREEN);
+        } else {
+            DrawText(TextFormat("**NO DEATH, RUN**", playerDeathCount), GetScreenWidth()/2.3f - MeasureText("!PERFECT, RUN!", 20)/2.0f, GetScreenHeight()/1.7f - 50, 30, GREEN);
+        }
+    }
+    
+    if(game_state == GAME_COMPLETE)
+    {
+        Color tint = (Color){9,10,59,255};
+        DrawRectangleRounded((Rectangle){0, 0, SCREEN_WIDTH, SCREEN_HEIGHT}, 0.1f, 3, tint);
+        DrawText("YOU FINISHED THE GAME!", GetScreenWidth()/3.7f - MeasureText("YOU FINISHED THE GAME!", 20)/2.0f, GetScreenHeight()/3.0f - 30, 60, RED);
         DrawText("PRESS [R] or [ESC] TO QUIT", GetScreenWidth()/2.0f - MeasureText("PRESS [R] or [ESC] TO QUIT", 20)/2.0f, GetScreenHeight()/2.0f - 50, 20, WHITE);
         
         if(playerDeathCount) {
